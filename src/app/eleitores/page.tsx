@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Search, Plus, Edit2, Trash2, ChevronUp, ChevronDown,
-  ChevronsUpDown, Users, ChevronLeft, ChevronRight, Eye
+  ChevronsUpDown, Users, ChevronLeft, ChevronRight, Eye, MoreHorizontal
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -264,6 +264,7 @@ function EleitoresContent() {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Eleitor | null>(null);
   const [viewTarget, setViewTarget] = useState<Eleitor | null>(null);
+  const [actionsTarget, setActionsTarget] = useState<Eleitor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Eleitor | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -437,7 +438,7 @@ function EleitoresContent() {
                       {format(new Date(e.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                     </td>
                     <td>
-                      <div className={s.actions}>
+                      <div className={s.actionsDesktop}>
                         <button className={s.actionBtn} title="Ver detalhes" onClick={() => setViewTarget(e)}>
                           <Eye size={15} />
                         </button>
@@ -446,6 +447,11 @@ function EleitoresContent() {
                         </button>
                         <button className={`${s.actionBtn} ${s.actionBtnDanger}`} title="Remover" onClick={() => setDeleteTarget(e)}>
                           <Trash2 size={15} />
+                        </button>
+                      </div>
+                      <div className={s.actionsMobile}>
+                        <button className={s.actionBtn} title="Mais ações" onClick={() => setActionsTarget(e)}>
+                          <MoreHorizontal size={15} />
                         </button>
                       </div>
                     </td>
@@ -495,6 +501,46 @@ function EleitoresContent() {
         onClose={() => setViewTarget(null)}
         eleitor={viewTarget}
       />
+
+      <Modal
+        open={!!actionsTarget}
+        onClose={() => setActionsTarget(null)}
+        title="Ações do eleitor"
+        footer={<Button variant="secondary" onClick={() => setActionsTarget(null)}>Fechar</Button>}
+      >
+        {actionsTarget && (
+          <div className={s.mobileActionsModal}>
+            <div className={s.mobileActionsTitle}>{actionsTarget.nome ?? 'Eleitor sem nome'}</div>
+            <button
+              className={s.mobileActionItem}
+              onClick={() => {
+                setViewTarget(actionsTarget);
+                setActionsTarget(null);
+              }}
+            >
+              <Eye size={15} /> Ver detalhes
+            </button>
+            <button
+              className={s.mobileActionItem}
+              onClick={() => {
+                handleOpenEdit(actionsTarget);
+                setActionsTarget(null);
+              }}
+            >
+              <Edit2 size={15} /> Editar
+            </button>
+            <button
+              className={`${s.mobileActionItem} ${s.mobileActionDanger}`}
+              onClick={() => {
+                setDeleteTarget(actionsTarget);
+                setActionsTarget(null);
+              }}
+            >
+              <Trash2 size={15} /> Remover
+            </button>
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={!!deleteTarget}

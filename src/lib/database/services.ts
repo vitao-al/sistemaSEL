@@ -64,6 +64,15 @@ export class EleitorService {
 export class DashboardService {
   constructor(private readonly eleitorService: EleitorService) {}
 
+  private calculateVariation(current: number, previous: number): number {
+    if (previous === 0) {
+      return current === 0 ? 0 : 100;
+    }
+
+    const variation = ((current - previous) / previous) * 100;
+    return Number(variation.toFixed(1));
+  }
+
   async getDashboardStats(userId: string): Promise<DashboardStats> {
     const allEleitores = await this.eleitorService.getEleitores(userId);
     const eleitoresComPromessa = allEleitores.filter(eleitor => eleitor.promessa);
@@ -80,6 +89,32 @@ export class DashboardService {
       total: allEleitores.filter(eleitor => new Date(eleitor.createdAt).getMonth() === monthIndex).length,
     }));
 
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+
+    const totalCurrentMonth = allEleitores.filter(eleitor => {
+      const createdAt = new Date(eleitor.createdAt);
+      return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === currentMonth;
+    }).length;
+
+    const totalPreviousMonth = allEleitores.filter(eleitor => {
+      const createdAt = new Date(eleitor.createdAt);
+      const previousMonthYear = currentMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
+      return createdAt.getFullYear() === previousMonthYear && createdAt.getMonth() === previousMonth;
+    }).length;
+
+    const promessasConcluidasCurrentMonth = promessasConcluidas.filter(eleitor => {
+      const createdAt = new Date(eleitor.createdAt);
+      return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === currentMonth;
+    }).length;
+
+    const promessasConcluidasPreviousMonth = promessasConcluidas.filter(eleitor => {
+      const createdAt = new Date(eleitor.createdAt);
+      const previousMonthYear = currentMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
+      return createdAt.getFullYear() === previousMonthYear && createdAt.getMonth() === previousMonth;
+    }).length;
+
     const zonasCount: Record<string, number> = {};
     allEleitores.forEach(eleitor => {
       if (eleitor.zona) {
@@ -94,9 +129,9 @@ export class DashboardService {
 
     return {
       totalEleitores: allEleitores.length,
-      totalEleitoresVariacao: 12.5,
+      totalEleitoresVariacao: this.calculateVariation(totalCurrentMonth, totalPreviousMonth),
       promessasConcluidas: promessasConcluidas.length,
-      promessasConcluidasVariacao: 8.3,
+      promessasConcluidasVariacao: this.calculateVariation(promessasConcluidasCurrentMonth, promessasConcluidasPreviousMonth),
       promessasPendentes: promessasPendentes.length,
       ultimoEleitorAdicionado: sortedEleitores[0],
       eleitoresPorMes,
