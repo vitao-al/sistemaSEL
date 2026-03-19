@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { email: 'leunam@hotmal.com' },
     update: {
       nome: 'Manuel Almeida Pinto',
@@ -25,6 +25,7 @@ async function main() {
     await prisma.eleitor.createMany({
       data: [
         {
+          userId: user.id,
           nome: 'José Silva',
           cpf: '123.456.789-00',
           tituloEleitor: '111122223333',
@@ -35,6 +36,7 @@ async function main() {
           promessaConcluida: false,
         },
         {
+          userId: user.id,
           nome: 'Maria Santos',
           cpf: '987.654.321-00',
           tituloEleitor: '444455556666',

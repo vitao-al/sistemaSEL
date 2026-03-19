@@ -33,39 +33,39 @@ export class AuthService {
 export class EleitorService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
-  async getEleitoresPage(params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
-    return this.adapter.queryEleitores(params);
+  async getEleitoresPage(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
+    return this.adapter.queryEleitores(userId, params);
   }
 
-  async getEleitores(): Promise<Eleitor[]> {
-    const eleitores = await this.adapter.listEleitores();
+  async getEleitores(userId: string): Promise<Eleitor[]> {
+    const eleitores = await this.adapter.listEleitores(userId);
     return [...eleitores].sort(
       (current, next) => new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime()
     );
   }
 
-  async getEleitorById(id: string): Promise<Eleitor | null> {
-    return this.adapter.findEleitorById(id);
+  async getEleitorById(userId: string, id: string): Promise<Eleitor | null> {
+    return this.adapter.findEleitorById(userId, id);
   }
 
-  async createEleitor(data: CreateEleitorInput): Promise<Eleitor> {
-    return this.adapter.createEleitor(data);
+  async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
+    return this.adapter.createEleitor(userId, data);
   }
 
-  async updateEleitor(id: string, data: UpdateEleitorInput): Promise<Eleitor> {
-    return this.adapter.updateEleitor(id, data);
+  async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+    return this.adapter.updateEleitor(userId, id, data);
   }
 
-  async deleteEleitor(id: string): Promise<void> {
-    await this.adapter.deleteEleitor(id);
+  async deleteEleitor(userId: string, id: string): Promise<void> {
+    await this.adapter.deleteEleitor(userId, id);
   }
 }
 
 export class DashboardService {
   constructor(private readonly eleitorService: EleitorService) {}
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    const allEleitores = await this.eleitorService.getEleitores();
+  async getDashboardStats(userId: string): Promise<DashboardStats> {
+    const allEleitores = await this.eleitorService.getEleitores(userId);
     const eleitoresComPromessa = allEleitores.filter(eleitor => eleitor.promessa);
     const promessasConcluidas = eleitoresComPromessa.filter(eleitor => eleitor.promessaConcluida);
     const promessasPendentes = eleitoresComPromessa.filter(eleitor => !eleitor.promessaConcluida);

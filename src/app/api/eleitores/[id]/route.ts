@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { requireAuthenticatedUserId } from '@/lib/auth/session';
 
 const eleitorUpdateSchema = z.object({
   nome: z.string().optional(),
@@ -20,8 +21,9 @@ type RouteParams = {
 
 export async function GET(_: NextRequest, { params }: RouteParams) {
   try {
+    const userId = requireAuthenticatedUserId(_);
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.getEleitorById(params.id);
+    const eleitor = await eleitorService.getEleitorById(userId, params.id);
 
     if (!eleitor) {
       throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
@@ -35,11 +37,12 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const userId = requireAuthenticatedUserId(request);
     const body = await request.json();
     const input = eleitorUpdateSchema.parse(body);
 
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.updateEleitor(params.id, input);
+    const eleitor = await eleitorService.updateEleitor(userId, params.id, input);
 
     return NextResponse.json({ success: true, data: eleitor }, { status: 200 });
   } catch (error) {
@@ -52,8 +55,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(_: NextRequest, { params }: RouteParams) {
   try {
+    const userId = requireAuthenticatedUserId(_);
     const { eleitorService } = createServerServices();
-    await eleitorService.deleteEleitor(params.id);
+    await eleitorService.deleteEleitor(userId, params.id);
 
     return NextResponse.json({ success: true, data: { ok: true } }, { status: 200 });
   } catch (error) {

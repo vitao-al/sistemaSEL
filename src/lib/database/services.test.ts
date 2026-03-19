@@ -26,7 +26,7 @@ function createMockAdapter(user?: UserWithPassword): DatabaseAdapter {
     async listEleitores() {
       return [];
     },
-    async queryEleitores(params) {
+    async queryEleitores(_userId, params) {
       return {
         items: [],
         total: 0,

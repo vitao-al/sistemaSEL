@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { requireAuthenticatedUserId } from '@/lib/auth/session';
 
 const eleitorCreateSchema = z.object({
   nome: z.string().optional(),
@@ -26,6 +27,7 @@ const eleitorQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = requireAuthenticatedUserId(request);
     const { searchParams } = new URL(request.url);
     const query = eleitorQuerySchema.parse({
       search: searchParams.get('search') ?? undefined,
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
     });
 
     const { eleitorService } = createServerServices();
-    const result = await eleitorService.getEleitoresPage(query);
+  const result = await eleitorService.getEleitoresPage(userId, query);
     return NextResponse.json({ success: true, data: result }, { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -50,11 +52,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = requireAuthenticatedUserId(request);
     const body = await request.json();
     const input = eleitorCreateSchema.parse(body);
 
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.createEleitor(input);
+    const eleitor = await eleitorService.createEleitor(userId, input);
     return NextResponse.json({ success: true, data: eleitor }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

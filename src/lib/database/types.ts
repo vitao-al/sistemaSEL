@@ -2,8 +2,19 @@ import { Eleitor, User } from '@/types';
 
 export type UserWithPassword = User & { senha: string };
 
-export type CreateEleitorInput = Omit<Eleitor, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateEleitorInput = Partial<Omit<Eleitor, 'id' | 'createdAt'>>;
+export interface EleitorPayload {
+  nome?: string;
+  cpf?: string;
+  tituloEleitor?: string;
+  sessao?: string;
+  zona?: string;
+  localVotacao?: string;
+  promessa?: string;
+  promessaConcluida?: boolean;
+}
+
+export type CreateEleitorInput = EleitorPayload;
+export type UpdateEleitorInput = Partial<EleitorPayload>;
 export type EleitorSortField = 'nome' | 'zona' | 'createdAt';
 export type EleitorSortDir = 'asc' | 'desc';
 export type EleitorPromessaFilter = '' | 'concluida' | 'pendente' | 'sem';
@@ -31,10 +42,10 @@ export interface DatabaseAdapter {
   findUserById(id: string): Promise<UserWithPassword | null>;
   updateUser(id: string, data: Partial<UserWithPassword>): Promise<UserWithPassword>;
 
-  listEleitores(): Promise<Eleitor[]>;
-  queryEleitores(params: EleitorQueryParams): Promise<PaginatedEleitoresResult>;
-  findEleitorById(id: string): Promise<Eleitor | null>;
-  createEleitor(data: CreateEleitorInput): Promise<Eleitor>;
-  updateEleitor(id: string, data: UpdateEleitorInput): Promise<Eleitor>;
-  deleteEleitor(id: string): Promise<void>;
+  listEleitores(userId: string): Promise<Eleitor[]>;
+  queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult>;
+  findEleitorById(userId: string, id: string): Promise<Eleitor | null>;
+  createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor>;
+  updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor>;
+  deleteEleitor(userId: string, id: string): Promise<void>;
 }

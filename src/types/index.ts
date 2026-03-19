@@ -9,6 +9,7 @@ export interface User {
 
 export interface Eleitor {
   id: string;
+  userId: string;
   nome?: string;
   cpf?: string;
   tituloEleitor?: string;

@@ -110,11 +110,11 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return updatedUser;
   }
 
-  async listEleitores(): Promise<Eleitor[]> {
-    return this.readEleitores();
+  async listEleitores(userId: string): Promise<Eleitor[]> {
+    return this.readEleitores().filter(eleitor => eleitor.userId === userId);
   }
 
-  async queryEleitores(params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
+  async queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
     const {
       search = '',
       zona = '',
@@ -125,7 +125,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       perPage,
     } = params;
 
-    let arr = [...this.readEleitores()];
+    let arr = [...this.readEleitores()].filter(eleitor => eleitor.userId === userId);
 
     if (search) {
       const normalizedSearch = search.toLowerCase();
@@ -184,17 +184,18 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     };
   }
 
-  async findEleitorById(id: string): Promise<Eleitor | null> {
+  async findEleitorById(userId: string, id: string): Promise<Eleitor | null> {
     const eleitores = this.readEleitores();
-    return eleitores.find(eleitor => eleitor.id === id) ?? null;
+    return eleitores.find(eleitor => eleitor.id === id && eleitor.userId === userId) ?? null;
   }
 
-  async createEleitor(data: CreateEleitorInput): Promise<Eleitor> {
+  async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
     const eleitores = this.readEleitores();
 
     const eleitor: Eleitor = {
       ...data,
       id: `eleitor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -205,9 +206,9 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return eleitor;
   }
 
-  async updateEleitor(id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+  async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
     const eleitores = this.readEleitores();
-    const eleitorIndex = eleitores.findIndex(eleitor => eleitor.id === id);
+    const eleitorIndex = eleitores.findIndex(eleitor => eleitor.id === id && eleitor.userId === userId);
 
     if (eleitorIndex === -1) {
       throw new Error('Eleitor não encontrado.');
@@ -225,9 +226,9 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return updatedEleitor;
   }
 
-  async deleteEleitor(id: string): Promise<void> {
+  async deleteEleitor(userId: string, id: string): Promise<void> {
     const eleitores = this.readEleitores();
-    const filteredEleitores = eleitores.filter(eleitor => eleitor.id !== id);
+    const filteredEleitores = eleitores.filter(eleitor => !(eleitor.id === id && eleitor.userId === userId));
     this.writeEleitores(filteredEleitores);
   }
 }

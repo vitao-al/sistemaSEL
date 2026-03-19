@@ -1,6 +1,12 @@
 import { DashboardStats, Eleitor, User } from '@/types';
 import { httpRequest } from './http/client';
-import { EleitorPromessaFilter, EleitorSortDir, EleitorSortField, PaginatedEleitoresResult } from './database/types';
+import {
+  EleitorPayload,
+  EleitorPromessaFilter,
+  EleitorSortDir,
+  EleitorSortField,
+  PaginatedEleitoresResult,
+} from './database/types';
 
 export type EleitorListQuery = {
   search?: string;
@@ -44,14 +50,14 @@ export async function getEleitorById(id: string): Promise<Eleitor | null> {
   return httpRequest(`/api/eleitores/${id}`);
 }
 
-export async function createEleitor(data: Omit<Eleitor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Eleitor> {
+export async function createEleitor(data: EleitorPayload): Promise<Eleitor> {
   return httpRequest('/api/eleitores', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateEleitor(id: string, data: Partial<Omit<Eleitor, 'id' | 'createdAt'>>): Promise<Eleitor> {
+export async function updateEleitor(id: string, data: Partial<EleitorPayload>): Promise<Eleitor> {
   return httpRequest(`/api/eleitores/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),

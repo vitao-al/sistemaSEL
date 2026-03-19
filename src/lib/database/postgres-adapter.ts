@@ -12,6 +12,7 @@ import { Eleitor } from '@/types';
 
 function mapEleitor(record: {
   id: string;
+  userId: string;
   nome: string | null;
   cpf: string | null;
   tituloEleitor: string | null;
@@ -25,6 +26,7 @@ function mapEleitor(record: {
 }): Eleitor {
   return {
     id: record.id,
+    userId: record.userId,
     nome: record.nome ?? undefined,
     cpf: record.cpf ?? undefined,
     tituloEleitor: record.tituloEleitor ?? undefined,
@@ -39,8 +41,10 @@ function mapEleitor(record: {
 }
 
 export class PostgresDatabaseAdapter implements DatabaseAdapter {
-  private buildEleitorWhere(params: EleitorQueryParams) {
+  private buildEleitorWhere(userId: string, params: EleitorQueryParams) {
     const where: Record<string, unknown> = {};
+
+    where.userId = userId;
 
     if (params.search) {
       where.OR = [
@@ -157,16 +161,19 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
-  async listEleitores(): Promise<Eleitor[]> {
+  async listEleitores(userId: string): Promise<Eleitor[]> {
     try {
-      const eleitores = await prisma.eleitor.findMany({ orderBy: { createdAt: 'desc' } });
+      const eleitores = await prisma.eleitor.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      });
       return eleitores.map(mapEleitor);
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao listar eleitores.');
     }
   }
 
-  async queryEleitores(params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
+  async queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
     try {
       const page = Math.max(1, params.page);
       const perPage = Math.max(1, params.perPage);
@@ -174,7 +181,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       const sortField = params.sortField ?? 'createdAt';
       const sortDir = params.sortDir ?? 'desc';
 
-      const where = this.buildEleitorWhere(params);
+      const where = this.buildEleitorWhere(userId, params);
 
       const [items, total] = await Promise.all([
         prisma.eleitor.findMany({
@@ -197,19 +204,20 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
-  async findEleitorById(id: string): Promise<Eleitor | null> {
+  async findEleitorById(userId: string, id: string): Promise<Eleitor | null> {
     try {
-      const eleitor = await prisma.eleitor.findUnique({ where: { id } });
+      const eleitor = await prisma.eleitor.findFirst({ where: { id, userId } });
       return eleitor ? mapEleitor(eleitor) : null;
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar eleitor.');
     }
   }
 
-  async createEleitor(data: CreateEleitorInput): Promise<Eleitor> {
+  async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
     try {
       const eleitor = await prisma.eleitor.create({
         data: {
+          userId,
           nome: data.nome,
           cpf: data.cpf,
           tituloEleitor: data.tituloEleitor,
@@ -227,8 +235,13 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
-  async updateEleitor(id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+  async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
     try {
+      const existing = await prisma.eleitor.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
+      }
+
       const eleitor = await prisma.eleitor.update({
         where: { id },
         data: {
@@ -244,15 +257,20 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       });
 
       return mapEleitor(eleitor);
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao atualizar eleitor.');
     }
   }
 
-  async deleteEleitor(id: string): Promise<void> {
+  async deleteEleitor(userId: string, id: string): Promise<void> {
     try {
-      await prisma.eleitor.delete({ where: { id } });
-    } catch {
+      const result = await prisma.eleitor.deleteMany({ where: { id, userId } });
+      if (result.count === 0) {
+        throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
+      }
+    } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao remover eleitor.');
     }
   }
