@@ -391,7 +391,9 @@
   }
   .formPanel {
     padding: 24px;
-    align-items: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding-top: 60px;
   }
 }
