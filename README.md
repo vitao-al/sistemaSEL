@@ -109,27 +109,6 @@ npm run prisma:studio  # Prisma Studio
 - Senha: `123456`
 - Cargo: `Vereador`
 
-## Deploy
-
-### Vercel
-
-- Framework preset: `Next.js`
-- Build command: `npm run build`
-- Variáveis de ambiente:
-  - `DATABASE_PROVIDER=postgres`
-  - `DATABASE_URL=<url-do-postgres>`
-  - `DATABASE_FALLBACK_TO_MEMORY=false`
-
-### Render
-
-- Runtime: `Node`
-- Build command: `npm install && npm run build`
-- Start command: `npm run start`
-- Health check: `/api/health`
-- Variáveis de ambiente:
-  - `DATABASE_PROVIDER=postgres`
-  - `DATABASE_URL=<url-do-postgres>`
-  - `DATABASE_FALLBACK_TO_MEMORY=false`
 
 ## Operação e observações
 
