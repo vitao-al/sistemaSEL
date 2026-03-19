@@ -9,9 +9,11 @@ import {
 } from './types';
 import { PostgresDatabaseAdapter } from './postgres-adapter';
 
+// Chaves do localStorage utilizadas no fallback em memória/navegador.
 const STORAGE_KEY_USERS = 'voterapp-users';
 const STORAGE_KEY_ELEITORES = 'voterapp-eleitores';
 
+// Usuário padrão para ambiente de fallback local.
 const DEFAULT_USERS: UserWithPassword[] = [
   {
     id: '1',
@@ -24,16 +26,24 @@ const DEFAULT_USERS: UserWithPassword[] = [
   },
 ];
 
+// Lista inicial de eleitores no fallback local.
 const DEFAULT_ELEITORES: Eleitor[] = [];
 
+// =========================
+// Adapter LocalStorage (fallback)
+// =========================
+
+// Implementação usada no cliente e como fallback quando Postgres não estiver disponível.
 export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   private usersFallback: UserWithPassword[] = [...DEFAULT_USERS];
   private eleitoresFallback: Eleitor[] = [...DEFAULT_ELEITORES];
 
+  // Detecta se está executando no browser.
   private isBrowser(): boolean {
     return typeof window !== 'undefined';
   }
 
+  // Lê usuários do localStorage (ou fallback em memória quando fora do browser).
   private readUsers(): UserWithPassword[] {
     if (!this.isBrowser()) return [...this.usersFallback];
 
@@ -48,6 +58,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
+  // Persiste usuários no localStorage (ou em memória no fallback server-side).
   private writeUsers(users: UserWithPassword[]): void {
     if (!this.isBrowser()) {
       this.usersFallback = [...users];
@@ -57,6 +68,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
   }
 
+  // Lê eleitores do localStorage (ou fallback em memória quando fora do browser).
   private readEleitores(): Eleitor[] {
     if (!this.isBrowser()) return [...this.eleitoresFallback];
 
@@ -71,6 +83,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
+  // Persiste eleitores no localStorage (ou em memória no fallback server-side).
   private writeEleitores(eleitores: Eleitor[]): void {
     if (!this.isBrowser()) {
       this.eleitoresFallback = [...eleitores];
@@ -80,21 +93,25 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     localStorage.setItem(STORAGE_KEY_ELEITORES, JSON.stringify(eleitores));
   }
 
+  // Busca usuário por credenciais para login.
   async findUserByCredentials(email: string, senha: string): Promise<UserWithPassword | null> {
     const users = this.readUsers();
     return users.find(user => user.email === email && user.senha === senha) ?? null;
   }
 
+  // Busca usuário por email.
   async findUserByEmail(email: string): Promise<UserWithPassword | null> {
     const users = this.readUsers();
     return users.find(user => user.email === email) ?? null;
   }
 
+  // Busca usuário por id.
   async findUserById(id: string): Promise<UserWithPassword | null> {
     const users = this.readUsers();
     return users.find(user => user.id === id) ?? null;
   }
 
+  // Atualiza dados de usuário local.
   async updateUser(id: string, data: Partial<UserWithPassword>): Promise<UserWithPassword> {
     const users = this.readUsers();
     const userIndex = users.findIndex(user => user.id === id);
@@ -110,10 +127,12 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return updatedUser;
   }
 
+  // Lista eleitores pertencentes ao usuário autenticado.
   async listEleitores(userId: string): Promise<Eleitor[]> {
     return this.readEleitores().filter(eleitor => eleitor.userId === userId);
   }
 
+  // Aplica filtros, ordenação e paginação na lista de eleitores do usuário.
   async queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
     const {
       search = '',
@@ -184,11 +203,13 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     };
   }
 
+  // Busca eleitor específico no escopo do usuário.
   async findEleitorById(userId: string, id: string): Promise<Eleitor | null> {
     const eleitores = this.readEleitores();
     return eleitores.find(eleitor => eleitor.id === id && eleitor.userId === userId) ?? null;
   }
 
+  // Cria eleitor no escopo do usuário autenticado.
   async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
     const eleitores = this.readEleitores();
 
@@ -206,6 +227,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return eleitor;
   }
 
+  // Atualiza eleitor no escopo do usuário autenticado.
   async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
     const eleitores = this.readEleitores();
     const eleitorIndex = eleitores.findIndex(eleitor => eleitor.id === id && eleitor.userId === userId);
@@ -226,6 +248,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return updatedEleitor;
   }
 
+  // Remove eleitor no escopo do usuário autenticado.
   async deleteEleitor(userId: string, id: string): Promise<void> {
     const eleitores = this.readEleitores();
     const filteredEleitores = eleitores.filter(eleitor => !(eleitor.id === id && eleitor.userId === userId));
@@ -233,30 +256,38 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   }
 }
 
+// Define onde o adapter será usado: servidor ou cliente.
 type AdapterRuntime = 'server' | 'client';
 
+// Opções de criação do adapter.
 type AdapterOptions = {
   runtime?: AdapterRuntime;
 };
 
+// Factory principal: escolhe adapter Postgres ou fallback local conforme ambiente/configuração.
 export function createDatabaseAdapter(options: AdapterOptions = {}): DatabaseAdapter {
   const runtime = options.runtime ?? (typeof window === 'undefined' ? 'server' : 'client');
 
   if (runtime === 'server') {
+    // Flags de configuração para decidir se usa banco real ou fallback.
     const wantsPostgres = process.env.DATABASE_PROVIDER === 'postgres';
     const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
     const allowFallback = process.env.DATABASE_FALLBACK_TO_MEMORY === 'true';
 
+    // Caminho ideal: banco PostgreSQL configurado.
     if (wantsPostgres && hasDatabaseUrl) {
       return new PostgresDatabaseAdapter();
     }
 
+    // Falha explícita quando Postgres é obrigatório e não há URL.
     if (!allowFallback && wantsPostgres) {
       throw new Error('DATABASE_URL não configurada e fallback em memória desabilitado.');
     }
 
+    // Fallback local para ambiente de desenvolvimento/teste.
     return new LocalStorageDatabaseAdapter();
   }
 
+  // No cliente sempre usa adapter local.
   return new LocalStorageDatabaseAdapter();
 }

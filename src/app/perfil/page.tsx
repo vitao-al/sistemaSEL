@@ -14,15 +14,18 @@ import { useAuthStore } from '@/store/auth';
 import { updateUserProfile, updateUserSenha } from '@/lib/data';
 import s from './perfil.module.css';
 
+// Utilitário para fallback de avatar textual.
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
+// Formulário de dados cadastrais editáveis do usuário.
 const profileSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
   cargo: z.string().optional(),
 });
 
+// Formulário de troca de senha com validação de confirmação.
 const senhaSchema = z.object({
   senhaAtual: z.string().min(1, 'Campo obrigatório'),
   novaSenha: z.string().min(6, 'Mínimo de 6 caracteres'),
@@ -59,6 +62,7 @@ function PerfilContent() {
     setProfileMsg(null);
     try {
       const updated = await updateUserProfile(user.id, data);
+      // Mantém o store local sincronizado com a versão persistida no backend.
       updateUser(updated);
       setProfileMsg({ type: 'success', text: 'Perfil atualizado com sucesso!' });
       toast('Perfil salvo!', 'success');
@@ -76,6 +80,7 @@ function PerfilContent() {
     try {
       await updateUserSenha(user.id, data.senhaAtual, data.novaSenha);
       setSenhaMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
+      // Evita manter valores sensíveis no formulário após atualização.
       senhaForm.reset();
       toast('Senha alterada!', 'success');
     } catch (err: any) {
@@ -96,7 +101,7 @@ function PerfilContent() {
 
   return (
     <div className={s.page}>
-      {/* Sidebar */}
+      {/* Cartão lateral com resumo do perfil */}
       <div className={s.profileCard}>
         <div className={s.profileBanner}>
           <div className={s.profileBannerDecor} />
@@ -134,9 +139,9 @@ function PerfilContent() {
         </div>
       </div>
 
-      {/* Right content */}
+      {/* Conteúdo principal com formulários de perfil e senha */}
       <div className={s.content}>
-        {/* Profile form */}
+        {/* Formulário de dados pessoais */}
         <div className={s.section}>
           <div className={s.sectionHeader}>
             <div className={s.sectionTitle}>Informações pessoais</div>
@@ -191,7 +196,7 @@ function PerfilContent() {
           </div>
         </div>
 
-        {/* Senha form */}
+        {/* Formulário de alteração de senha */}
         <div className={s.section}>
           <div className={s.sectionHeader}>
             <div className={s.sectionTitle}>Alterar senha</div>
@@ -281,6 +286,7 @@ function PerfilContent() {
 }
 
 export default function PerfilPage() {
+  // Provider local de toast para esta rota (mantém escopo de feedback da página).
   return (
     <ToastProvider>
       <Layout title="Meu Perfil" breadcrumb="Gerencie suas informações">

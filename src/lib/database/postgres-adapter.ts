@@ -1,3 +1,6 @@
+// Adapter PostgreSQL (Prisma) para operações de usuário e eleitores.
+// Implementa isolamento por usuário em todas as consultas mutáveis e de leitura.
+
 import { prisma } from './prisma';
 import { AppError } from '@/lib/errors';
 import {

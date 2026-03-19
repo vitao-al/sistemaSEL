@@ -1,3 +1,5 @@
+// Schema Prisma: define modelos, relacionamentos e índices do banco.
+
 generator client {
   provider = "prisma-client-js"
 }

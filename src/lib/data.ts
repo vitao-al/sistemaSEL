@@ -1,3 +1,5 @@
+// Camada de acesso a dados no client: concentra chamadas HTTP para as rotas internas da API.
+
 import { DashboardStats, Eleitor, User } from '@/types';
 import { httpRequest } from './http/client';
 import {
@@ -33,6 +35,7 @@ export async function authForgotPassword(email: string): Promise<void> {
 }
 
 export async function getEleitores(query: EleitorListQuery): Promise<PaginatedEleitoresResult> {
+  // Query string explícita para refletir estado da UI (filtro/ordenação/paginação).
   const params = new URLSearchParams();
 
   if (query.search) params.set('search', query.search);

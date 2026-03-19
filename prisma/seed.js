@@ -1,3 +1,6 @@
+// Seed inicial para ambiente de desenvolvimento.
+// Garante usuário base e um conjunto mínimo de eleitores vinculados a ele.
+
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();

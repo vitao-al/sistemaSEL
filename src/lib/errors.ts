@@ -1,3 +1,6 @@
+// Mapeamento de erros da aplicação para um contrato HTTP consistente.
+// Centraliza códigos, status e formato de resposta de falha.
+
 import { NextResponse } from 'next/server';
 
 type ErrorCode =

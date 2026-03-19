@@ -1,3 +1,6 @@
+// Contratos de tipos compartilhados entre frontend, serviços e adapters.
+// Mantém alinhamento de shape de dados em toda a aplicação.
+
 export interface User {
   id: string;
   nome: string;

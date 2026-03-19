@@ -4,7 +4,7 @@ import { useEffect, useState, createContext, useContext } from 'react';
 import { ArrowUpRight, TrendingUp, TrendingDown, X, Trash2, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import s from './ui.module.css';
 
-// ====== STAT CARD ======
+// Card de KPI usado no dashboard para números resumidos e variação percentual.
 interface StatCardProps {
   label: string;
   value: string | number;
@@ -40,7 +40,7 @@ export function StatCard({ label, value, icon, iconBg, iconColor, badge, badgeUp
   );
 }
 
-// ====== CHART CARD ======
+// Container padronizado para blocos de gráfico com título/subtítulo.
 interface ChartCardProps {
   title: string;
   subtitle?: string;
@@ -64,7 +64,7 @@ export function ChartCard({ title, subtitle, action, children, delay = 0 }: Char
   );
 }
 
-// ====== BADGE ======
+// Selo de status com variantes semânticas.
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 export function Badge({ children, variant = 'neutral' }: { children: React.ReactNode; variant?: BadgeVariant }) {
   const variantClass = {
@@ -77,7 +77,7 @@ export function Badge({ children, variant = 'neutral' }: { children: React.React
   return <span className={`${s.badge} ${variantClass}`}>{children}</span>;
 }
 
-// ====== BUTTON ======
+// Botão base reutilizado em formulários, modais e tabelas.
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -99,7 +99,7 @@ export function Button({ children, variant = 'primary', size = 'md', loading, ic
   );
 }
 
-// ====== INPUT ======
+// Input com label, ícone e erro integrados em uma única API.
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
@@ -121,7 +121,7 @@ export function Input({ label, error, icon, className, ...props }: InputProps) {
   );
 }
 
-// ====== SKELETON ======
+// Placeholder de carregamento para reduzir layout shift.
 export function Skeleton({ width, height, className }: { width?: string | number; height?: string | number; className?: string }) {
   return (
     <div
@@ -131,7 +131,7 @@ export function Skeleton({ width, height, className }: { width?: string | number
   );
 }
 
-// ====== EMPTY STATE ======
+// Estado vazio padrão para listas sem resultados.
 interface EmptyStateProps {
   icon: React.ReactNode;
   title: string;
@@ -149,7 +149,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
   );
 }
 
-// ====== MODAL ======
+// Modal genérico com lock de scroll do body enquanto está aberto.
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -179,7 +179,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   );
 }
 
-// ====== CONFIRM DIALOG ======
+// Dialog de confirmação destrutiva (ex.: remoção de registro).
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
@@ -205,7 +205,7 @@ export function ConfirmDialog({ open, title, description, onConfirm, onCancel, l
   );
 }
 
-// ====== TOAST ======
+// Toast global para feedback não-bloqueante.
 type ToastType = 'success' | 'error' | 'info';
 interface ToastItem { id: number; message: string; type: ToastType; }
 interface ToastContextValue { toast: (message: string, type?: ToastType) => void; }
@@ -216,6 +216,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const toast = (message: string, type: ToastType = 'info') => {
+    // ID temporal simples é suficiente para este volume de eventos de UI.
     const id = Date.now();
     setToasts(p => [...p, { id, message, type }]);
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3500);

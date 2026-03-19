@@ -1,3 +1,5 @@
+-- Migration SQL: alterações estruturais no banco de dados.
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,

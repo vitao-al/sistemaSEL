@@ -10,6 +10,7 @@ export default function MobileSidebar() {
   const { user, logout } = useAuthStore();
 
   useEffect(() => {
+    // Fecha automaticamente ao entrar em largura desktop.
     const handleResize = () => {
       if (window.innerWidth > 768) {
         setIsOpen(false);
@@ -22,6 +23,8 @@ export default function MobileSidebar() {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
+
+    // Evita scroll de fundo com menu aberto no mobile.
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -43,7 +46,7 @@ export default function MobileSidebar() {
 
   return (
     <>
-      {/* Hamburger Button */}
+      {/* Botão hamburguer */}
       <button
         className={`${styles.hamburger} ${isOpen ? styles.hamburgerHidden : ''}`}
         onClick={toggleMenu}
@@ -54,10 +57,10 @@ export default function MobileSidebar() {
         <span className={styles.line}></span>
       </button>
 
-      {/* Overlay */}
+      {/* Overlay para fechar menu ao clicar fora */}
       {isOpen && <div className={styles.overlay} onClick={closeMenu}></div>}
 
-      {/* Sidebar */}
+      {/* Drawer lateral mobile */}
       <nav className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
         <div className={styles.sidebarHeader}>
           <h2>Menu</h2>

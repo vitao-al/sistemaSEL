@@ -1,3 +1,6 @@
+// Testes unitários para garantir o comportamento do pipeline de erros padronizados.
+// Valida conversões e assertions de domínio.
+
 import { describe, expect, it } from 'vitest';
 import { AppError, assertOrThrow, toAppError } from './errors';
 

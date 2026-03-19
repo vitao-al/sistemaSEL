@@ -1,3 +1,6 @@
+// Instância singleton do Prisma Client para evitar múltiplas conexões em dev.
+// Reaproveita cliente no escopo global durante hot reload.
+
 import { PrismaClient } from '@prisma/client';
 
 declare global {

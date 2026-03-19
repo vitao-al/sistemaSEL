@@ -1,5 +1,7 @@
 'use client';
 
+// Avatar com fallback textual para manter identidade visual mesmo sem imagem.
+
 import s from './ui.module.css';
 
 interface UserAvatarProps {
@@ -21,6 +23,7 @@ function getInitials(name: string) {
 }
 
 export default function UserAvatar({ name, src, size = 36, alt, className = '' }: UserAvatarProps) {
+  // Garante URL relativa à pasta public quando necessário.
   const imageUrl = src ? (src.startsWith('/') ? src : `/${src}`) : null;
   return imageUrl ? (
     <img

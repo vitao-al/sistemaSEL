@@ -1,3 +1,6 @@
+// Fábrica de serviços do backend para handlers da API.
+// Constrói adapter e serviços de domínio por requisição.
+
 import { createDatabaseAdapter } from './adapter';
 import { AuthService, DashboardService, EleitorService, UserService } from './services';
 

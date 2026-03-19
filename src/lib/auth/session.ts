@@ -1,3 +1,6 @@
+// Helpers de autenticação para extrair e validar usuário via token Bearer.
+// Mantém a lógica de sessão reutilizável entre os route handlers.
+
 import { NextRequest } from 'next/server';
 import { AppError } from '@/lib/errors';
 

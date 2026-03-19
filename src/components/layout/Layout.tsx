@@ -19,6 +19,7 @@ interface LayoutProps {
   breadcrumb?: string;
 }
 
+// Estrutura principal de navegação lateral.
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/eleitores', icon: Users, label: 'Eleitores' },
@@ -36,7 +37,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Aplicar tema inicial
+    // Aplica o tema persistido assim que o shell monta.
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' || 'system';
     const root = document.documentElement;
     
@@ -51,7 +52,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
   useEffect(() => {
     if (!hasHydrated) return;
 
-    // Se token expirou, força logout
+    // Token vencido: invalida sessão local imediatamente.
     if (user && expiresAt && Date.now() > expiresAt) {
       logout();
       router.replace('/login');
@@ -72,12 +73,12 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
 
   return (
     <div className={s.layout}>
-      {/* Mobile overlay */}
+      {/* Overlay de bloqueio quando o menu lateral mobile está aberto */}
       {sidebarOpen && (
         <div className={s.mobileOverlay} onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Navegação lateral fixa (desktop) / deslizante (mobile) */}
       <aside className={`${s.sidebar} ${sidebarOpen ? s.open : ''}`}>
         <div className={s.sidebarTop}>
           <div className={s.brand}>
@@ -117,7 +118,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Área principal com header contextual e conteúdo da rota */}
       <div className={s.main}>
         <header className={s.header}>
           <div className={s.headerLeft}>

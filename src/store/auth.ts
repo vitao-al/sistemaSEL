@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { AuthState } from '@/types';
 import { authLogin } from '@/lib/data';
 
+// Store central de autenticação com persistência no localStorage.
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -15,6 +16,7 @@ export const useAuthStore = create<AuthState>()(
       expiresAt: null,
       hasHydrated: false,
 
+      // Sinaliza quando o estado persistido já foi restaurado no cliente.
       setHasHydrated: (value) => {
         set({ hasHydrated: value });
       },
@@ -31,10 +33,12 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      // Limpa sessão local (token, usuário e data de expiração).
       logout: () => {
         set({ user: null, token: null, isAuthenticated: false, expiresAt: null });
       },
 
+      // Atualização parcial do perfil no store sem perder campos atuais.
       updateUser: (data) => {
         const current = get().user;
         if (!current) return;
@@ -53,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
 
+        // Segurança extra: descarta sessão persistida se já estiver vencida.
         if (state.expiresAt && Date.now() > state.expiresAt) {
           state.logout();
         }

@@ -17,7 +17,7 @@ import { getEleitores, createEleitor, updateEleitor, deleteEleitor } from '@/lib
 import { Eleitor } from '@/types';
 import s from './eleitores.module.css';
 
-// Schema
+// Schema flexível: campos são opcionais porque o cadastro pode ser progressivo.
 const eleitorSchema = z.object({
   nome: z.string().optional(),
   cpf: z.string().optional(),
@@ -34,6 +34,7 @@ function onlyDigits(value?: string) {
   return value?.replace(/\D/g, '');
 }
 
+// Máscara visual para CPF no input (persistência salva apenas dígitos).
 function formatCpf(value?: string) {
   const digits = onlyDigits(value)?.slice(0, 11) ?? '';
   return digits
@@ -42,6 +43,7 @@ function formatCpf(value?: string) {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
+// Máscara visual do título de eleitor para facilitar leitura durante digitação.
 function formatTituloEleitor(value?: string) {
   const digits = onlyDigits(value)?.slice(0, 12) ?? '';
   return digits
@@ -54,6 +56,7 @@ function normalizeOptionalText(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+// Normaliza payload antes de enviar para API para evitar lixo (espaços, máscara, campos vazios).
 function sanitizeEleitorForm(data: EleitorForm): EleitorForm {
   const promessa = normalizeOptionalText(data.promessa);
 
@@ -95,6 +98,7 @@ function EleitorFormModal({
   const promessa = watch('promessa');
 
   useEffect(() => {
+    // Ao abrir o modal, hidrata com os dados atuais (edição) ou limpa o formulário (criação).
     if (open) {
       reset(initial ? {
         nome: initial.nome,
@@ -198,6 +202,8 @@ function EleitorFormModal({
 
 function EleitorViewModal({ open, onClose, eleitor }: { open: boolean; onClose: () => void; eleitor: Eleitor | null }) {
   if (!eleitor) return null;
+
+  // Lista de campos simples renderizados em grade para reaproveitar estrutura visual.
   const fields = [
     { label: 'Nome', value: eleitor.nome },
     { label: 'CPF', value: eleitor.cpf },
@@ -271,6 +277,7 @@ function EleitoresContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Filtros, ordenação e paginação ficam centralizados no backend para escalabilidade.
       const data = await getEleitores({
         search,
         zona: filterZona,
@@ -290,7 +297,7 @@ function EleitoresContent() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Unique zonas for filter (based on current result window)
+  // Constrói opções de zona com base no recorte atual retornado pela API.
   const zonas = useMemo(() => {
     const set = new Set(eleitores.map(e => e.zona).filter(Boolean) as string[]);
     return Array.from(set).sort();
@@ -298,6 +305,7 @@ function EleitoresContent() {
 
   const totalPages = Math.max(1, Math.ceil(totalEleitores / PER_PAGE));
 
+  // Sempre volta para a primeira página quando filtros/ordenação mudam.
   useEffect(() => { setPage(1); }, [search, filterZona, filterPromessa, sortField, sortDir]);
 
   function handleSort(field: SortField) {
@@ -326,6 +334,7 @@ function EleitoresContent() {
         toast('Eleitor cadastrado com sucesso!', 'success');
       }
       setFormOpen(false);
+      // Recarrega lista para refletir estado real do backend após create/update.
       await load();
     } catch {
       toast('Erro ao salvar. Tente novamente.', 'error');
@@ -351,7 +360,7 @@ function EleitoresContent() {
 
   return (
     <div className={s.page}>
-      {/* Toolbar */}
+      {/* Barra de pesquisa, filtros e ação primária */}
       <div className={s.toolbar}>
         <div className={s.searchWrap}>
           <span className={s.searchIcon}><Search size={16} /></span>
@@ -379,7 +388,7 @@ function EleitoresContent() {
         </Button>
       </div>
 
-      {/* Table */}
+      {/* Tabela principal de eleitores com estados de loading/empty/lista */}
       <div className={s.tableCard}>
         <div className={s.tableHeader}>
           <span className={s.tableTitle}>
@@ -487,7 +496,7 @@ function EleitoresContent() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modais e confirmação de remoção */}
       <EleitorFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}

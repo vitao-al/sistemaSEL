@@ -1,5 +1,7 @@
 'use client';
 
+// Controle de tema local (claro, escuro e automático), persistido no localStorage.
+
 import { useEffect, useState } from 'react';
 import styles from './ThemeSwitcher.module.css';
 
@@ -11,6 +13,7 @@ export default function ThemeSwitcher() {
 
   useEffect(() => {
     setMounted(true);
+    // Recupera preferência salva e sincroniza com o atributo data-theme do documento.
     const saved = localStorage.getItem('theme') as Theme || 'system';
     setTheme(saved);
     applyTheme(saved);
@@ -28,6 +31,7 @@ export default function ThemeSwitcher() {
   };
 
   const handleThemeChange = (newTheme: Theme) => {
+    // Atualiza UI, persiste escolha e aplica imediatamente.
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);

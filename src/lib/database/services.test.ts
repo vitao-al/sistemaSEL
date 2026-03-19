@@ -1,3 +1,6 @@
+// Testes de serviços de domínio usando adapter mockado em memória.
+// Verifica fluxos críticos de autenticação e atualização de usuário.
+
 import { describe, expect, it } from 'vitest';
 import { AuthService, UserService } from './services';
 import { DatabaseAdapter, UserWithPassword } from './types';

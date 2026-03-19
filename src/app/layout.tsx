@@ -1,3 +1,6 @@
+// Layout raiz do App Router.
+// Define metadados globais e aplica o stylesheet base uma única vez para toda a aplicação.
+
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 

@@ -1,3 +1,5 @@
+-- Migration SQL: alterações estruturais no banco de dados.
+
 -- AddColumn
 ALTER TABLE "Eleitor" ADD COLUMN "userId" TEXT;
 

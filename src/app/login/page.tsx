@@ -10,11 +10,13 @@ import { useAuthStore } from '@/store/auth';
 import { authForgotPassword } from '@/lib/data';
 import s from './login.module.css';
 
+// Validação mínima do formulário principal de autenticação.
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   senha: z.string().min(1, 'Senha obrigatória'),
 });
 
+// Formulário secundário para recuperação de senha.
 const forgotSchema = z.object({
   email: z.string().email('Email inválido'),
 });
@@ -40,6 +42,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    // Se o usuário já estiver autenticado, não faz sentido permanecer na tela de login.
     if (!hasHydrated) return;
     if (isAuthenticated) {
       router.replace('/dashboard');
@@ -47,6 +50,7 @@ export default function LoginPage() {
   }, [hasHydrated, isAuthenticated, router]);
 
   const onSubmit = async (data: LoginForm) => {
+    // Limpa erro global antes de nova tentativa para evitar mensagem stale.
     setGlobalError('');
     try {
       await login(data.email, data.senha);
@@ -60,6 +64,7 @@ export default function LoginPage() {
     setForgotLoading(true);
     try {
       await authForgotPassword(data.email);
+      // Não revela se o e-mail existe; apenas confirma envio do fluxo de recuperação.
       setForgotSuccess(true);
     } catch (err: any) {
       forgotForm.setError('email', { message: err.message });
@@ -70,7 +75,7 @@ export default function LoginPage() {
 
   return (
     <div className={s.page}>
-      {/* Left Panel */}
+      {/* Painel institucional com proposta de valor do produto */}
       <div className={s.panel}>
         <div className={s.panelBg} />
         <div className={s.panelDecor} />
@@ -96,7 +101,7 @@ export default function LoginPage() {
 
       </div>
 
-      {/* Form Panel */}
+      {/* Painel de autenticação */}
       <div className={s.formPanel}>
         <div className={s.formBox}>
           <div className={s.formHeader}>
@@ -168,7 +173,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
+      {/* Modal isolado para recuperação de senha */}
       {showForgot && (
         <div className={s.modalOverlay} onClick={() => { setShowForgot(false); setForgotSuccess(false); }}>
           <div className={s.modal} onClick={e => e.stopPropagation()}>

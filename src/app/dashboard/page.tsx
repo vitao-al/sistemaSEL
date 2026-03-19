@@ -20,10 +20,12 @@ import s from './dashboard.module.css';
 const COLORS = ['#F97316', '#FB923C', '#94A3B8'];
 const PIE_COLORS = ['#10B981', '#F59E0B', '#94A3B8'];
 
+// Exibe iniciais no avatar quando não há foto do eleitor.
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
+// Tooltip reutilizado por todos os gráficos para manter consistência visual.
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -55,6 +57,7 @@ export default function DashboardPage() {
       } catch (requestError) {
         if (!mounted) return;
 
+        // Sessão expirada: força limpeza local e volta para login.
         if (requestError instanceof HttpClientError && requestError.status === 401) {
           logout();
           router.replace('/login');
@@ -72,7 +75,9 @@ export default function DashboardPage() {
 
     loadStats();
 
+    // Mantém dashboard atualizado sem exigir refresh manual.
     const intervalId = window.setInterval(loadStats, 30000);
+    // Ao voltar para a aba, recarrega os números para reduzir chance de dado stale.
     const onFocus = () => {
       loadStats();
     };
@@ -104,6 +109,7 @@ export default function DashboardPage() {
     );
   }
 
+  // Estado de erro com fallback amigável (evita tela em branco quando API falha).
   if (!stats) {
     return (
       <Layout title="Dashboard" breadcrumb="Visão geral da campanha">
@@ -124,7 +130,7 @@ export default function DashboardPage() {
   return (
     <Layout title="Dashboard" breadcrumb="Visão geral da campanha">
       <div className={s.page}>
-        {/* Stat Cards */}
+        {/* Cards de KPI principais */}
         <div className={s.statsGrid}>
           <StatCard
             label="Total de Eleitores"
@@ -176,7 +182,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Charts Row 1 */}
+        {/* Primeira linha de gráficos: tendência + distribuição */}
         <div className={s.chartsGrid}>
           <ChartCard
             title="Eleitores por Mês"
@@ -241,7 +247,7 @@ export default function DashboardPage() {
           </ChartCard>
         </div>
 
-        {/* Charts Row 2 */}
+        {/* Segunda linha: ranking de zonas + último cadastro */}
         <div className={s.chartsBottom}>
           <ChartCard
             title="Zonas mais Ativas"
@@ -263,7 +269,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Last voter card */}
+          {/* Card de contexto operacional sobre o último eleitor cadastrado */}
           <div className={s.lastVoterCard}>
             <div className={s.lastVoterTitle}>Último Eleitor Adicionado</div>
             {stats.ultimoEleitorAdicionado ? (

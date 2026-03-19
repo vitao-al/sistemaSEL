@@ -1,3 +1,8 @@
+/*
+ * Estilos do arquivo src/components/ui/ThemeSwitcher.module.css
+ * Organização: blocos visuais por componente/seção.
+ */
+
 .themeSwitcher {
   display: flex;
   gap: 4px;
