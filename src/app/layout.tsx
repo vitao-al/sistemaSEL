@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'VotaGestor — Gestão de Eleitores',
+  title: 'Sistema SEL',
   description: 'Sistema de gestão de eleitores para campanhas políticas',
 };
 

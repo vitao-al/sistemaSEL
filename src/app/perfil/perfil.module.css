@@ -19,6 +19,8 @@
   height: 80px;
   background: linear-gradient(135deg, var(--brand-primary) 0%, #EA580C 100%);
   position: relative;
+  overflow: hidden;
+  z-index: 0;
 }
 
 .profileBannerDecor {
@@ -37,6 +39,8 @@
   align-items: center;
   margin-top: -30px;
   padding: 0 24px 24px;
+  position: relative;
+  z-index: 1;
 }
 
 .profileAvatar {

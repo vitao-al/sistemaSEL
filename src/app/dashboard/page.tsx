@@ -40,10 +40,32 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDashboardStats().then(data => {
-      setStats(data);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    const loadStats = async () => {
+      try {
+        const data = await getDashboardStats();
+        if (!mounted) return;
+        setStats(data);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadStats();
+
+    const intervalId = window.setInterval(loadStats, 30000);
+    const onFocus = () => {
+      loadStats();
+    };
+
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   if (loading) {

@@ -30,6 +30,45 @@ const eleitorSchema = z.object({
 });
 type EleitorForm = z.infer<typeof eleitorSchema>;
 
+function onlyDigits(value?: string) {
+  return value?.replace(/\D/g, '');
+}
+
+function formatCpf(value?: string) {
+  const digits = onlyDigits(value)?.slice(0, 11) ?? '';
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function formatTituloEleitor(value?: string) {
+  const digits = onlyDigits(value)?.slice(0, 12) ?? '';
+  return digits
+    .replace(/(\d{4})(\d)/, '$1 $2')
+    .replace(/(\d{4})(\d)/, '$1 $2');
+}
+
+function normalizeOptionalText(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function sanitizeEleitorForm(data: EleitorForm): EleitorForm {
+  const promessa = normalizeOptionalText(data.promessa);
+
+  return {
+    nome: normalizeOptionalText(data.nome),
+    cpf: normalizeOptionalText(onlyDigits(data.cpf)),
+    tituloEleitor: normalizeOptionalText(onlyDigits(data.tituloEleitor)),
+    sessao: normalizeOptionalText(data.sessao),
+    zona: normalizeOptionalText(data.zona),
+    localVotacao: normalizeOptionalText(data.localVotacao),
+    promessa,
+    promessaConcluida: promessa ? !!data.promessaConcluida : false,
+  };
+}
+
 function getInitials(name?: string) {
   if (!name) return '?';
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
@@ -92,12 +131,30 @@ function EleitorFormModal({
 
         <div className={s.formField}>
           <label className={s.formLabel}>CPF</label>
-          <input {...register('cpf')} className={s.formInput} placeholder="000.000.000-00" />
+          <input
+            {...register('cpf', {
+              onChange: event => {
+                event.target.value = formatCpf(event.target.value);
+              },
+            })}
+            className={s.formInput}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+          />
         </div>
 
         <div className={s.formField}>
           <label className={s.formLabel}>Título de Eleitor</label>
-          <input {...register('tituloEleitor')} className={s.formInput} placeholder="000000000000" />
+          <input
+            {...register('tituloEleitor', {
+              onChange: event => {
+                event.target.value = formatTituloEleitor(event.target.value);
+              },
+            })}
+            className={s.formInput}
+            placeholder="0000 0000 0000"
+            inputMode="numeric"
+          />
         </div>
 
         <div className={s.formField}>
@@ -257,13 +314,14 @@ function EleitoresContent() {
 
   const handleSave = async (data: EleitorForm) => {
     setSaving(true);
+    const sanitizedData = sanitizeEleitorForm(data);
     try {
       if (editTarget) {
-        const updated = await updateEleitor(editTarget.id, data);
+        const updated = await updateEleitor(editTarget.id, sanitizedData);
         setEleitores(prev => prev.map(e => e.id === updated.id ? updated : e));
         toast('Eleitor atualizado com sucesso!', 'success');
       } else {
-        await createEleitor(data);
+        await createEleitor(sanitizedData);
         toast('Eleitor cadastrado com sucesso!', 'success');
       }
       setFormOpen(false);
