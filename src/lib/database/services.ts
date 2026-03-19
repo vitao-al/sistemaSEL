@@ -90,8 +90,10 @@ export class DashboardService {
     }));
 
     const now = new Date();
+    const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const previousMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
     const countByMonth = <T extends { createdAt: string | Date }>(
       items: T[],
@@ -101,24 +103,14 @@ export class DashboardService {
       items.filter(item => {
         const createdAt = new Date(item.createdAt);
         return createdAt.getFullYear() === year && createdAt.getMonth() === month;
-    }).length;
+      }).length;
 
-    const totalPreviousMonth = allEleitores.filter(eleitor => {
-      const createdAt = new Date(eleitor.createdAt);
-      const previousMonthYear = currentMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
-      return createdAt.getFullYear() === previousMonthYear && createdAt.getMonth() === previousMonth;
-    }).length;
+    const totalCurrentMonth = countByMonth(allEleitores, currentYear, currentMonth);
+    const totalPreviousMonth = countByMonth(allEleitores, previousMonthYear, previousMonth);
 
-    const promessasConcluidasCurrentMonth = promessasConcluidas.filter(eleitor => {
-      const createdAt = new Date(eleitor.createdAt);
-      return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === currentMonth;
-    }).length;
+    const promessasConcluidasCurrentMonth = countByMonth(promessasConcluidas, currentYear, currentMonth);
 
-    const promessasConcluidasPreviousMonth = promessasConcluidas.filter(eleitor => {
-      const createdAt = new Date(eleitor.createdAt);
-      const previousMonthYear = currentMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
-      return createdAt.getFullYear() === previousMonthYear && createdAt.getMonth() === previousMonth;
-    }).length;
+    const promessasConcluidasPreviousMonth = countByMonth(promessasConcluidas, previousMonthYear, previousMonth);
 
     const zonasCount: Record<string, number> = {};
     allEleitores.forEach(eleitor => {
