@@ -93,9 +93,14 @@ export class DashboardService {
     const currentMonth = now.getMonth();
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
 
-    const totalCurrentMonth = allEleitores.filter(eleitor => {
-      const createdAt = new Date(eleitor.createdAt);
-      return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === currentMonth;
+    const countByMonth = <T extends { createdAt: string | Date }>(
+      items: T[],
+      year: number,
+      month: number,
+    ): number =>
+      items.filter(item => {
+        const createdAt = new Date(item.createdAt);
+        return createdAt.getFullYear() === year && createdAt.getMonth() === month;
     }).length;
 
     const totalPreviousMonth = allEleitores.filter(eleitor => {
