@@ -1,6 +1,17 @@
-# sistemaSEL
+# SistemaSEL
 
 Aplicação web para gestão de eleitores, com autenticação, dashboard analítico, CRUD completo e filtros de consulta. O projeto utiliza Next.js (App Router), TypeScript, Prisma e PostgreSQL, com estrutura preparada para execução local e deploy em produção.
+
+## Tecnologias usadas
+
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+![Zustand](https://img.shields.io/badge/Zustand-111111?style=for-the-badge&logo=react&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 
 ## Visão geral
 

@@ -82,7 +82,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
         <div className={s.sidebarTop}>
           <div className={s.brand}>
             <div className={s.brandIcon}><Vote size={18} /></div>
-            <span className={s.brandName}>VotaGestor</span>
+            <span className={s.brandName}>Sistema SEL</span>
           </div>
         </div>
 
