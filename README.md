@@ -103,9 +103,9 @@ npm run test:watch     # Testes em watch
 npm run prisma:studio  # Prisma Studio
 ```
 
-## Credencial inicial (seed)
+## Credencial demo (seed)
 
-- Email: `leunam@hotmal.com`
+- Email: `demo@gmail.com`
 - Senha: `123456`
 - Cargo: `Vereador`
 
