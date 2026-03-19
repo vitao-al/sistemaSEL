@@ -29,8 +29,12 @@ function getAuthTokenFromStorage(): string | null {
     const rawPersistedState = window.localStorage.getItem('voter-auth');
     if (!rawPersistedState) return null;
 
-    const parsed = JSON.parse(rawPersistedState) as { state?: { token?: string | null } };
-    return parsed.state?.token ?? null;
+    const parsed = JSON.parse(rawPersistedState) as {
+      state?: { token?: string | null };
+      token?: string | null;
+    };
+
+    return parsed.state?.token ?? parsed.token ?? null;
   } catch {
     return null;
   }

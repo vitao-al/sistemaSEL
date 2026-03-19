@@ -10,6 +10,8 @@ import { Users, CheckCircle2, Clock, UserPlus, TrendingUp, Plus } from 'lucide-r
 import Layout from '@/components/layout/Layout';
 import { StatCard, ChartCard, Skeleton } from '@/components/ui';
 import { getDashboardStats } from '@/lib/data';
+import { HttpClientError } from '@/lib/http/client';
+import { useAuthStore } from '@/store/auth';
 import { DashboardStats } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,8 +38,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { logout } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -47,6 +51,20 @@ export default function DashboardPage() {
         const data = await getDashboardStats();
         if (!mounted) return;
         setStats(data);
+        setError(null);
+      } catch (requestError) {
+        if (!mounted) return;
+
+        if (requestError instanceof HttpClientError && requestError.status === 401) {
+          logout();
+          router.replace('/login');
+          return;
+        }
+
+        const message = requestError instanceof Error
+          ? requestError.message
+          : 'Falha ao carregar os dados do dashboard.';
+        setError(message);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -86,7 +104,20 @@ export default function DashboardPage() {
     );
   }
 
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <Layout title="Dashboard" breadcrumb="Visão geral da campanha">
+        <div className={s.page}>
+          <div className={s.lastVoterCard}>
+            <div className={s.lastVoterTitle}>Não foi possível carregar o dashboard</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 8 }}>
+              {error ?? 'Tente atualizar a página em instantes.'}
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const totalComPromessa = stats.promessasConcluidas + stats.promessasPendentes;
 
