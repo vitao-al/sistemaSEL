@@ -80,7 +80,7 @@ export default function LoginPage() {
           <div className={s.brandIcon}>
             <Vote size={20} />
           </div>
-          <span className={s.brandName}>VotaGestor</span>
+          <span className={s.brandName}>Sistema SEL</span>
         </div>
 
         <div className={s.panelContent}>
@@ -94,23 +94,13 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className={s.panelStats}>
-          <div className={s.stat}>
-            <span className={s.statValue}>40+</span>
-            <span className={s.statLabel}>Eleitores cadastrados</span>
-          </div>
-          <div className={s.stat}>
-            <span className={s.statValue}>7</span>
-            <span className={s.statLabel}>Zonas cobertas</span>
-          </div>
-        </div>
       </div>
 
       {/* Form Panel */}
       <div className={s.formPanel}>
         <div className={s.formBox}>
           <div className={s.formHeader}>
-            <h2 className={s.formTitle}>Bem-vindo de volta</h2>
+            <h2 className={s.formTitle}>Bem-vindo(a)</h2>
             <p className={s.formSubtitle}>
               Entre com suas credenciais para acessar o painel
             </p>
