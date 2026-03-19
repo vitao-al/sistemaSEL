@@ -1,0 +1,24 @@
+# Dependências do projeto (mapeadas do package.json)
+# Observação: este projeto é Next.js/Node.js (npm), não Python.
+# Este arquivo foi criado para listar todas as dependências solicitadas.
+
+# Runtime dependencies
+next==14.2.5
+react>=18,<19
+react-dom>=18,<19
+recharts>=2.12.7,<3
+zustand>=4.5.4,<5
+react-hook-form>=7.52.1,<8
+zod>=3.23.8,<4
+@hookform/resolvers>=3.9.0,<4
+date-fns>=3.6.0,<4
+lucide-react>=0.408.0,<1
+clsx>=2.1.1,<3
+
+# Development dependencies
+typescript>=5,<6
+@types/node>=20,<21
+@types/react>=18,<19
+@types/react-dom>=18,<19
+eslint>=8,<9
+eslint-config-next==14.2.5
