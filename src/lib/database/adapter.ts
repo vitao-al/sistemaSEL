@@ -10,6 +10,7 @@ import {
   EleitorQueryParams,
   PaginatedCabosResult,
   PaginatedEleitoresResult,
+  PasswordResetTokenRecord,
   SessionScope,
   UpdateCaboInput,
   UpdateEleitorInput,
@@ -413,6 +414,21 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     if (!visible) throw new Error('Eleitor não encontrado.');
     this.writeEleitores(this.readEleitores().filter(item => item.id !== id));
   }
+
+  // ── Token de recuperação de senha (no-op neste adapter) ──
+  // O fluxo de reset de senha exige banco de dados real para persistência do token.
+
+  async createPasswordResetToken(): Promise<void> {
+    console.warn('[LocalAdapter] createPasswordResetToken: sem efeito no adapter em memória.');
+  }
+
+  async findPasswordResetToken(): Promise<PasswordResetTokenRecord | null> {
+    return null;
+  }
+
+  async markPasswordResetTokenUsed(): Promise<void> {}
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {}
 }
 
 function isRecoverableDatabaseError(error: unknown): boolean {
@@ -575,6 +591,38 @@ class ResilientDatabaseAdapter implements DatabaseAdapter {
       'deleteEleitor',
       () => this.primary.deleteEleitor(scope, id),
       () => this.fallback.deleteEleitor(scope, id)
+    );
+  }
+
+  createPasswordResetToken(email: string, role: string, token: string, expiresAt: Date): Promise<void> {
+    return this.executeWithFallback(
+      'createPasswordResetToken',
+      () => this.primary.createPasswordResetToken(email, role, token, expiresAt),
+      () => this.fallback.createPasswordResetToken(email, role, token, expiresAt)
+    );
+  }
+
+  findPasswordResetToken(token: string): Promise<PasswordResetTokenRecord | null> {
+    return this.executeWithFallback(
+      'findPasswordResetToken',
+      () => this.primary.findPasswordResetToken(token),
+      () => this.fallback.findPasswordResetToken(token)
+    );
+  }
+
+  markPasswordResetTokenUsed(token: string): Promise<void> {
+    return this.executeWithFallback(
+      'markPasswordResetTokenUsed',
+      () => this.primary.markPasswordResetTokenUsed(token),
+      () => this.fallback.markPasswordResetTokenUsed(token)
+    );
+  }
+
+  deleteExpiredPasswordResetTokens(): Promise<void> {
+    return this.executeWithFallback(
+      'deleteExpiredPasswordResetTokens',
+      () => this.primary.deleteExpiredPasswordResetTokens(),
+      () => this.fallback.deleteExpiredPasswordResetTokens()
     );
   }
 }

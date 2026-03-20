@@ -14,6 +14,7 @@ import {
   EleitorQueryParams,
   PaginatedCabosResult,
   PaginatedEleitoresResult,
+  PasswordResetTokenRecord,
   SessionScope,
   UpdateCaboInput,
   UpdateEleitorInput,
@@ -595,5 +596,40 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     }
 
     await prisma.eleitor.delete({ where: { id } });
+  }
+
+  // ── Token de recuperação de senha ──
+
+  async createPasswordResetToken(email: string, role: string, token: string, expiresAt: Date): Promise<void> {
+    await prisma.passwordResetToken.create({
+      data: { email, role, token, expiresAt },
+    });
+  }
+
+  async findPasswordResetToken(token: string): Promise<PasswordResetTokenRecord | null> {
+    const record = await prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!record) return null;
+    return {
+      id: record.id,
+      token: record.token,
+      email: record.email,
+      role: record.role,
+      expiresAt: record.expiresAt,
+      usedAt: record.usedAt,
+      createdAt: record.createdAt,
+    };
+  }
+
+  async markPasswordResetTokenUsed(token: string): Promise<void> {
+    await prisma.passwordResetToken.update({
+      where: { token },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await prisma.passwordResetToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
   }
 }

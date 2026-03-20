@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Vote, UserRound } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import { authForgotPassword, getAdmins, registerCabo } from '@/lib/data';
+import { getAdmins, registerCabo } from '@/lib/data';
 import { Admin } from '@/types';
 import s from './login.module.css';
 
@@ -15,11 +16,6 @@ import s from './login.module.css';
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   senha: z.string().min(1, 'Senha obrigatória'),
-});
-
-// Formulário secundário para recuperação de senha.
-const forgotSchema = z.object({
-  email: z.string().email('Email inválido'),
 });
 
 const registerSchema = z.object({
@@ -32,7 +28,6 @@ const registerSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
-type ForgotForm = z.infer<typeof forgotSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function LoginPage() {
@@ -40,20 +35,13 @@ export default function LoginPage() {
   const { login, isLoading, isAuthenticated, hasHydrated } = useAuthStore();
   const [showSenha, setShowSenha] = useState(false);
   const [globalError, setGlobalError] = useState('');
-  const [showForgot, setShowForgot] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState(false);
-  const [forgotSuccess, setForgotSuccess] = useState(false);
-  const [forgotLoading, setForgotLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-  });
-
-  const forgotForm = useForm<ForgotForm>({
-    resolver: zodResolver(forgotSchema),
   });
 
   const registerForm = useForm<RegisterForm>({
@@ -82,19 +70,6 @@ export default function LoginPage() {
       router.push(role === 'admin' ? '/cabos' : '/dashboard');
     } catch (err: any) {
       setGlobalError(err.message || 'Erro ao fazer login.');
-    }
-  };
-
-  const onForgot = async (data: ForgotForm) => {
-    setForgotLoading(true);
-    try {
-      await authForgotPassword(data.email);
-      // Não revela se o e-mail existe; apenas confirma envio do fluxo de recuperação.
-      setForgotSuccess(true);
-    } catch (err: any) {
-      forgotForm.setError('email', { message: err.message });
-    } finally {
-      setForgotLoading(false);
     }
   };
 
@@ -226,9 +201,9 @@ export default function LoginPage() {
               </div>
 
               <div className={s.forgot}>
-                <button type="button" className={s.forgotLink} onClick={() => setShowForgot(true)}>
+                <Link href="/recuperar-senha" className={s.forgotLink}>
                   Esqueci minha senha
-                </button>
+                </Link>
               </div>
 
               <button type="submit" className={s.submitBtn} disabled={isLoading}>
@@ -296,64 +271,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Modal isolado para recuperação de senha */}
-      {showForgot && (
-        <div className={s.modalOverlay} onClick={() => { setShowForgot(false); setForgotSuccess(false); }}>
-          <div className={s.modal} onClick={e => e.stopPropagation()}>
-            {forgotSuccess ? (
-              <div className={s.successMsg}>
-                <div className={s.successIcon}><CheckCircle size={28} /></div>
-                <p className={s.successTitle}>Email enviado!</p>
-                <p className={s.successDesc}>
-                  Verifique sua caixa de entrada para redefinir a senha.
-                </p>
-                <button
-                  className={s.submitBtn}
-                  style={{ marginTop: '24px', width: '100%' }}
-                  onClick={() => { setShowForgot(false); setForgotSuccess(false); }}
-                >
-                  Fechar
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className={s.modalTitle}>Recuperar senha</p>
-                <p className={s.modalDesc}>
-                  Informe seu email e enviaremos instruções para redefinir sua senha.
-                </p>
-                <form onSubmit={forgotForm.handleSubmit(onForgot)}>
-                  <div className={s.field}>
-                    <label className={s.label}>Email</label>
-                    <div className={s.inputWrap}>
-                      <span className={s.inputIcon}><Mail size={16} /></span>
-                      <input
-                        {...forgotForm.register('email')}
-                        className={`${s.input} ${forgotForm.formState.errors.email ? s.error : ''}`}
-                        type="email"
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                    {forgotForm.formState.errors.email && (
-                      <span className={s.fieldError}>
-                        <AlertCircle size={12} />
-                        {forgotForm.formState.errors.email.message}
-                      </span>
-                    )}
-                  </div>
-                  <div className={s.modalActions}>
-                    <button type="button" className={s.btnOutline} onClick={() => setShowForgot(false)}>
-                      Cancelar
-                    </button>
-                    <button type="submit" className={s.submitBtn} style={{ flex: 1 }} disabled={forgotLoading}>
-                      {forgotLoading ? <span className={s.spinner} /> : 'Enviar'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

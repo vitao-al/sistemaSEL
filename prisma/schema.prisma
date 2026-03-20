@@ -60,3 +60,18 @@ model Eleitor {
   @@index([zona])
   @@index([promessaConcluida])
 }
+
+// Token temporário gerado para o fluxo de recuperação de senha.
+// Expira em 30 minutos e só pode ser usado uma vez.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  role      String    // 'admin' | 'cabo'
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([email])
+}

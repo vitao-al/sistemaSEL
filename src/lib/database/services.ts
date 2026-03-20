@@ -61,8 +61,62 @@ export class AuthService {
   async forgotPassword(email: string): Promise<void> {
     const foundUser = await this.adapter.findAuthUserByEmail(email);
     if (!foundUser) {
-      throw new AppError('NOT_FOUND', 404, 'Email não encontrado.');
+      // Não revela se o email existe: apenas silencia sem erro visível ao cliente.
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[auth] forgot-password ignorado: email não encontrado (${email}).`);
+      }
+      return;
     }
+
+    // Gera token aleatório e seguro (32 bytes hex = 64 chars).
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const { RESET_TOKEN_EXPIRY_MINUTES, sendPasswordResetEmail } = await import('@/lib/email/mailer');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+    // Limpa tokens expirados antes de criar o novo.
+    await this.adapter.deleteExpiredPasswordResetTokens();
+    await this.adapter.createPasswordResetToken(foundUser.email, foundUser.role, token, expiresAt);
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+    const resetUrl = `${baseUrl}/redefinir-senha/${token}`;
+
+    await sendPasswordResetEmail({
+      to: foundUser.email,
+      nome: foundUser.nome,
+      resetUrl,
+    });
+  }
+
+  async validateResetToken(token: string): Promise<{ email: string; role: string; expiresAt: Date }> {
+    const record = await this.adapter.findPasswordResetToken(token);
+
+    if (!record) {
+      throw new AppError('NOT_FOUND', 404, 'Link de recuperação inválido ou já utilizado.');
+    }
+
+    if (record.usedAt) {
+      throw new AppError('VALIDATION_ERROR', 410, 'Este link já foi utilizado. Solicite um novo.');
+    }
+
+    if (new Date() > record.expiresAt) {
+      throw new AppError('VALIDATION_ERROR', 410, 'Este link expirou. Solicite um novo link de recuperação.');
+    }
+
+    return { email: record.email, role: record.role, expiresAt: record.expiresAt };
+  }
+
+  async resetPassword(token: string, novaSenha: string): Promise<void> {
+    const { email, role } = await this.validateResetToken(token);
+
+    const foundUser = await this.adapter.findAuthUserByEmail(email);
+    if (!foundUser) {
+      throw new AppError('NOT_FOUND', 404, 'Usuário não encontrado.');
+    }
+
+    await this.adapter.updateAuthUser(role as 'admin' | 'cabo', foundUser.id, { senha: novaSenha });
+    await this.adapter.markPasswordResetTokenUsed(token);
   }
 }
 

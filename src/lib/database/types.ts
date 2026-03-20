@@ -106,4 +106,21 @@ export interface DatabaseAdapter {
   createEleitor(scope: SessionScope, data: CreateEleitorInput): Promise<Eleitor>;
   updateEleitor(scope: SessionScope, id: string, data: UpdateEleitorInput): Promise<Eleitor>;
   deleteEleitor(scope: SessionScope, id: string): Promise<void>;
+
+  // Tokens de recuperação de senha
+  createPasswordResetToken(email: string, role: string, token: string, expiresAt: Date): Promise<void>;
+  findPasswordResetToken(token: string): Promise<PasswordResetTokenRecord | null>;
+  markPasswordResetTokenUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
+}
+
+// Registro de token de recuperação retornado pelo adapter.
+export interface PasswordResetTokenRecord {
+  id: string;
+  token: string;
+  email: string;
+  role: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
 }

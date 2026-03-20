@@ -44,6 +44,22 @@ export async function authForgotPassword(email: string): Promise<void> {
   });
 }
 
+export async function authValidateResetToken(token: string): Promise<{
+  valid: boolean;
+  expiresAt: string;
+  secondsLeft: number;
+  email: string;
+}> {
+  return httpRequest(`/api/auth/reset-password/${token}`);
+}
+
+export async function authResetPassword(token: string, novaSenha: string): Promise<{ message: string }> {
+  return httpRequest(`/api/auth/reset-password/${token}`, {
+    method: 'POST',
+    body: JSON.stringify({ novaSenha }),
+  });
+}
+
 export async function getAdmins(): Promise<Admin[]> {
   return httpRequest('/api/auth/admins');
 }
