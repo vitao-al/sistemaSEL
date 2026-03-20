@@ -17,6 +17,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function RecuperarSenhaPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [isResending, setIsResending] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -48,7 +49,8 @@ export default function RecuperarSenhaPage() {
 
   const handleResend = async () => {
     if (cooldown > 0) return;
-    setStatus('loading');
+    setIsResending(true);
+    setErrorMsg('');
     try {
       await authForgotPassword(submittedEmail);
       setCooldown(60);
@@ -62,6 +64,8 @@ export default function RecuperarSenhaPage() {
     } catch {
       setStatus('error');
       setErrorMsg('Falha ao reenviar. Tente novamente em instantes.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -172,10 +176,10 @@ export default function RecuperarSenhaPage() {
 
               <button
                 onClick={handleResend}
-                disabled={cooldown > 0 || status === 'loading'}
+                disabled={cooldown > 0 || isResending}
                 className={s.resendBtn}
               >
-                {status === 'loading' ? (
+                {isResending ? (
                   <><span className={s.spinner} />Reenviando...</>
                 ) : cooldown > 0 ? (
                   `Reenviar em ${cooldown}s`
