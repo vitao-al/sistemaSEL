@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
 
 // Regra mínima de troca de senha.
 const senhaSchema = z.object({
@@ -18,13 +19,24 @@ type RouteParams = {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const scope = requireAuthenticatedScope(request);
+    const role = request.nextUrl.searchParams.get('role');
+
+    if (params.id !== scope.userId) {
+      throw new AppError('FORBIDDEN', 403, 'Não autorizado a alterar esta senha.');
+    }
+
+    if (role !== 'admin' && role !== 'cabo') {
+      throw new AppError('VALIDATION_ERROR', 400, 'Role inválida para troca de senha.');
+    }
+
     // 1) Parse e validação do payload.
     const body = await request.json();
     const input = senhaSchema.parse(body);
 
     // 2) Troca de senha no serviço de usuário.
     const { userService } = createServerServices();
-    await userService.updateUserSenha(params.id, input.senhaAtual, input.novaSenha);
+    await userService.updateUserSenha(role, params.id, input.senhaAtual, input.novaSenha);
 
     return NextResponse.json({ success: true, data: { ok: true } }, { status: 200 });
   } catch (error) {

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
-import { requireAuthenticatedUserId } from '@/lib/auth/session';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
 
 // Schema para criação de eleitor.
 // Campos são opcionais porque o formulário permite preenchimento progressivo.
@@ -18,6 +18,7 @@ const eleitorCreateSchema = z.object({
   localVotacao: z.string().optional(),
   promessa: z.string().optional(),
   promessaConcluida: z.boolean().optional(),
+  caboEleitoralId: z.string().optional(),
 });
 
 // Schema dos filtros de listagem (com defaults para paginação e ordenação).
@@ -27,14 +28,15 @@ const eleitorQuerySchema = z.object({
   promessa: z.enum(['', 'concluida', 'pendente', 'sem']).optional().default(''),
   sortField: z.enum(['nome', 'zona', 'createdAt']).optional().default('createdAt'),
   sortDir: z.enum(['asc', 'desc']).optional().default('desc'),
+  caboEleitoralId: z.string().optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   perPage: z.coerce.number().int().positive().max(100).optional().default(12),
 });
 
 export async function GET(request: NextRequest) {
   try {
-    // 1) Resolve usuário autenticado a partir do Bearer token.
-    const userId = requireAuthenticatedUserId(request);
+    // 1) Resolve sessão autenticada a partir do Bearer token.
+    const scope = requireAuthenticatedScope(request);
 
     // 2) Extrai e valida query params da listagem.
     const { searchParams } = new URL(request.url);
@@ -44,13 +46,14 @@ export async function GET(request: NextRequest) {
       promessa: searchParams.get('promessa') ?? undefined,
       sortField: searchParams.get('sortField') ?? undefined,
       sortDir: searchParams.get('sortDir') ?? undefined,
+      caboEleitoralId: searchParams.get('caboEleitoralId') ?? undefined,
       page: searchParams.get('page') ?? undefined,
       perPage: searchParams.get('perPage') ?? undefined,
     });
 
-    // 3) Busca somente eleitores desse usuário (tenant isolation).
+    // 3) Busca somente eleitores permitidos no escopo da sessão.
     const { eleitorService } = createServerServices();
-    const result = await eleitorService.getEleitoresPage(userId, query);
+    const result = await eleitorService.getEleitoresPage(scope, query);
 
     // 4) Retorna resposta paginada em envelope padrão.
     return NextResponse.json({ success: true, data: result }, { status: 200 });
@@ -67,16 +70,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1) Resolve usuário autenticado.
-    const userId = requireAuthenticatedUserId(request);
+    // 1) Resolve sessão autenticada.
+    const scope = requireAuthenticatedScope(request);
 
     // 2) Valida payload de criação.
     const body = await request.json();
     const input = eleitorCreateSchema.parse(body);
 
-    // 3) Cria eleitor já vinculado ao userId autenticado.
+    // 3) Cria eleitor no escopo da sessão autenticada.
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.createEleitor(userId, input);
+    const eleitor = await eleitorService.createEleitor(scope, input);
 
     // 4) Retorna recurso criado (201).
     return NextResponse.json({ success: true, data: eleitor }, { status: 201 });

@@ -5,11 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, UserCircle, Vote,
-  LogOut, Menu, X, ChevronRight
+  LogOut, Menu, X
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import UserAvatar from '@/components/ui/UserAvatar';
-import MobileSidebar from '@/components/ui/MobileSidebar';
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
 import s from './Layout.module.css';
 
@@ -19,12 +18,21 @@ interface LayoutProps {
   breadcrumb?: string;
 }
 
-// Estrutura principal de navegação lateral.
-const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/eleitores', icon: Users, label: 'Eleitores' },
-  { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
-];
+function getNavItems(role: 'admin' | 'cabo') {
+  if (role === 'admin') {
+    return [
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { href: '/cabos', icon: Users, label: 'Cabos Eleitorais' },
+      { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
+    ];
+  }
+
+  return [
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/eleitores', icon: Users, label: 'Eleitores' },
+    { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
+  ];
+}
 
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
@@ -64,12 +72,18 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
     }
   }, [hasHydrated, user, expiresAt, isAuthenticated, logout, router]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
   if (!hasHydrated || !user) return null;
+
+  const navItems = getNavItems(user.role);
 
   return (
     <div className={s.layout}>
@@ -85,6 +99,9 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
             <div className={s.brandIcon}><Vote size={18} /></div>
             <span className={s.brandName}>Sistema SEL</span>
           </div>
+          <button className={s.sidebarClose} onClick={() => setSidebarOpen(false)} aria-label="Fechar menu">
+            <X size={18} />
+          </button>
         </div>
 
         <nav className={s.nav}>
@@ -109,7 +126,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
             </div>
             <div className={s.userInfo}>
               <div className={s.userName}>{user.nome}</div>
-              <div className={s.userRole}>{user.cargo ?? 'Político'}</div>
+              <div className={s.userRole}>{user.role === 'admin' ? 'Admin' : 'Cabo Eleitoral'}</div>
             </div>
           </Link>
           <button className={s.logoutBtn} onClick={handleLogout} title="Sair">
@@ -122,7 +139,9 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
       <div className={s.main}>
         <header className={s.header}>
           <div className={s.headerLeft}>
-            <MobileSidebar />
+            <button className={s.mobileMenuBtn} onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+              <Menu size={18} />
+            </button>
             <div className={s.pageMeta}>
               <span className={s.pageTitle}>{title}</span>
               {breadcrumb && <span className={s.pageBreadcrumb}>{breadcrumb}</span>}

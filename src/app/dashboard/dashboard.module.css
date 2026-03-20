@@ -25,17 +25,89 @@
 .lastVoterCard {
   background: var(--surface-card);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 16px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-default);
   animation: fadeIn 0.4s 0.3s ease both;
 }
 
+.lastVoterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
 .lastVoterTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 16px;
+  white-space: nowrap;
+}
+
+.lastVoterTimestamp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Bloco de cabo eleitoral que cadastrou o eleitor */
+.caboEleitoral {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03));
+  border: 1px solid rgba(249,115,22,0.2);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.caboEleitoralIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: rgba(249,115,22,0.12);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.caboEleitoralInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.caboEleitoralLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.caboEleitoralName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .voterRow {
@@ -191,15 +263,62 @@
 }
 
 @media (max-width: 768px) {
-  .statsGrid { grid-template-columns: 1fr 1fr; }
+  .page {
+    gap: 16px;
+  }
+  .statsGrid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .chartsGrid { gap: 12px; }
   .chartsBottom { grid-template-columns: 1fr; }
+  .lastVoterCard {
+    padding: 16px;
+  }
+  .lastVoterHeader {
+    margin-bottom: 12px;
+  }
+  .lastVoterTitle {
+    font-size: 14px;
+  }
+  .lastVoterTimestamp {
+    font-size: 10px;
+  }
+  .caboEleitoral {
+    margin: 10px 0;
+  }
+  .voterFields {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 480px) {
-  .statsGrid { grid-template-columns: 1fr; }
+  .page {
+    gap: 12px;
+  }
+  .statsGrid { grid-template-columns: 1fr; gap: 10px; }
   .bannerCard { padding: 16px; }
   .bannerValue { font-size: 24px; }
   .voterRow { flex-direction: column; align-items: flex-start; }
   .voterAvatar { width: 40px; height: 40px; font-size: 13px; }
   .voterFields { grid-template-columns: 1fr; }
+  .lastVoterCard {
+    padding: 14px;
+  }
+  .lastVoterHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .lastVoterTimestamp {
+    align-self: flex-start;
+  }
+  .caboEleitoral {
+    padding: 8px 10px;
+  }
+  .caboEleitoralIcon {
+    width: 28px;
+    height: 28px;
+  }
+  .caboEleitoralName {
+    font-size: 12px;
+  }
 }

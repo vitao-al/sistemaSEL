@@ -1,7 +1,8 @@
 // Contratos de tipos compartilhados entre frontend, serviços e adapters.
-// Mantém alinhamento de shape de dados em toda a aplicação.
 
-export interface User {
+export type AuthRole = 'admin' | 'cabo';
+
+export interface Admin {
   id: string;
   nome: string;
   email: string;
@@ -10,9 +11,33 @@ export interface User {
   createdAt: string;
 }
 
+export interface CaboEleitoral {
+  id: string;
+  adminId: string;
+  nome: string;
+  titulo: string;
+  zona: string;
+  email: string;
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
+  admin?: Pick<Admin, 'id' | 'nome' | 'email'>;
+}
+
+export interface AuthUser {
+  id: string;
+  nome: string;
+  email: string;
+  avatar?: string;
+  cargo?: string;
+  role: AuthRole;
+  adminId?: string;
+  createdAt: string;
+}
+
 export interface Eleitor {
   id: string;
-  userId: string;
+  caboEleitoralId: string;
   nome?: string;
   cpf?: string;
   tituloEleitor?: string;
@@ -23,6 +48,7 @@ export interface Eleitor {
   promessaConcluida?: boolean;
   createdAt: string;
   updatedAt: string;
+  caboEleitoral?: Pick<CaboEleitoral, 'id' | 'nome' | 'titulo' | 'zona' | 'adminId'>;
 }
 
 export interface DashboardStats {
@@ -37,8 +63,13 @@ export interface DashboardStats {
   zonasMaisAtivas: { zona: string; total: number }[];
 }
 
+export interface CabosDashboardStats {
+  totalCabos: number;
+  totalEleitores: number;
+}
+
 export interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -47,7 +78,7 @@ export interface AuthState {
   setHasHydrated: (value: boolean) => void;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
-  updateUser: (user: Partial<User>) => void;
+  updateUser: (user: Partial<AuthUser>) => void;
 }
 
 export interface EleitorFilters {

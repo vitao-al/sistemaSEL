@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
 
 // Campos permitidos para atualização de perfil.
 const userUpdateSchema = z.object({
@@ -20,13 +21,24 @@ type RouteParams = {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const scope = requireAuthenticatedScope(request);
+    const role = request.nextUrl.searchParams.get('role');
+
+    if (params.id !== scope.userId) {
+      throw new AppError('FORBIDDEN', 403, 'Não autorizado a atualizar este perfil.');
+    }
+
+    if (role !== 'admin' && role !== 'cabo') {
+      throw new AppError('VALIDATION_ERROR', 400, 'Role inválida para atualização de perfil.');
+    }
+
     // 1) Lê e valida payload da atualização.
     const body = await request.json();
     const input = userUpdateSchema.parse(body);
 
     // 2) Executa atualização no serviço de usuário.
     const { userService } = createServerServices();
-    const user = await userService.updateUserProfile(params.id, input);
+    const user = await userService.updateUserProfile(role, params.id, input);
 
     return NextResponse.json({ success: true, data: user }, { status: 200 });
   } catch (error) {

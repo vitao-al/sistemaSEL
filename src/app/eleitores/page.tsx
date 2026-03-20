@@ -13,8 +13,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Layout from '@/components/layout/Layout';
 import { Button, Badge, Modal, ConfirmDialog, EmptyState, ToastProvider, useToast } from '@/components/ui';
-import { getEleitores, createEleitor, updateEleitor, deleteEleitor } from '@/lib/data';
-import { Eleitor } from '@/types';
+import { getEleitores, createEleitor, updateEleitor, deleteEleitor, getCabos, validateEleitorUnique } from '@/lib/data';
+import { CaboEleitoral, Eleitor } from '@/types';
+import { useAuthStore } from '@/store/auth';
 import s from './eleitores.module.css';
 
 // Schema flexível: campos são opcionais porque o cadastro pode ser progressivo.
@@ -27,6 +28,7 @@ const eleitorSchema = z.object({
   localVotacao: z.string().optional(),
   promessa: z.string().optional(),
   promessaConcluida: z.boolean().optional(),
+  caboEleitoralId: z.string().optional(),
 });
 type EleitorForm = z.infer<typeof eleitorSchema>;
 
@@ -69,6 +71,7 @@ function sanitizeEleitorForm(data: EleitorForm): EleitorForm {
     localVotacao: normalizeOptionalText(data.localVotacao),
     promessa,
     promessaConcluida: promessa ? !!data.promessaConcluida : false,
+    caboEleitoralId: normalizeOptionalText(data.caboEleitoralId),
   };
 }
 
@@ -77,25 +80,75 @@ function getInitials(name?: string) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 type SortField = 'nome' | 'zona' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 const PER_PAGE = 12;
 
 function EleitorFormModal({
-  open, onClose, initial, onSave, loading
+  open, onClose, initial, onSave, loading, isAdmin, cabos, selectedCaboId
 }: {
   open: boolean;
   onClose: () => void;
   initial?: Eleitor | null;
   onSave: (data: EleitorForm) => Promise<void>;
   loading: boolean;
+  isAdmin: boolean;
+  cabos: CaboEleitoral[];
+  selectedCaboId?: string;
 }) {
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<EleitorForm>({
+  const { register, handleSubmit, reset, watch, getValues, setError, clearErrors, formState: { errors } } = useForm<EleitorForm>({
     resolver: zodResolver(eleitorSchema),
   });
 
   const promessa = watch('promessa');
+  const fixedCabo = selectedCaboId ? cabos.find(cabo => cabo.id === selectedCaboId) : null;
+  const showCaboSelector = isAdmin && !fixedCabo;
+
+  const validateUniqueField = useCallback(async (field: 'cpf' | 'tituloEleitor') => {
+    const cpf = onlyDigits(getValues('cpf'));
+    const tituloEleitor = onlyDigits(getValues('tituloEleitor'));
+
+    if (field === 'cpf' && !cpf) {
+      clearErrors('cpf');
+      return;
+    }
+
+    if (field === 'tituloEleitor' && !tituloEleitor) {
+      clearErrors('tituloEleitor');
+      return;
+    }
+
+    try {
+      const validation = await validateEleitorUnique({
+        cpf: field === 'cpf' ? cpf : undefined,
+        tituloEleitor: field === 'tituloEleitor' ? tituloEleitor : undefined,
+        excludeId: initial?.id,
+      });
+
+      if (field === 'cpf') {
+        if (!validation.cpfAvailable) {
+          setError('cpf', { type: 'manual', message: 'CPF já cadastrado para outro eleitor.' });
+        } else {
+          clearErrors('cpf');
+        }
+      }
+
+      if (field === 'tituloEleitor') {
+        if (!validation.tituloEleitorAvailable) {
+          setError('tituloEleitor', { type: 'manual', message: 'Título de eleitor já cadastrado para outro eleitor.' });
+        } else {
+          clearErrors('tituloEleitor');
+        }
+      }
+    } catch {
+      // Se a validação remota falhar, o backend ainda valida no submit.
+    }
+  }, [clearErrors, getValues, initial?.id, setError]);
 
   useEffect(() => {
     // Ao abrir o modal, hidrata com os dados atuais (edição) ou limpa o formulário (criação).
@@ -109,9 +162,10 @@ function EleitorFormModal({
         localVotacao: initial.localVotacao,
         promessa: initial.promessa,
         promessaConcluida: initial.promessaConcluida,
-      } : {});
+        caboEleitoralId: selectedCaboId ?? initial.caboEleitoralId,
+      } : { caboEleitoralId: selectedCaboId });
     }
-  }, [open, initial, reset]);
+  }, [open, initial, reset, selectedCaboId]);
 
   return (
     <Modal
@@ -128,6 +182,26 @@ function EleitorFormModal({
       }
     >
       <div className={s.formGrid}>
+        {fixedCabo && (
+          <div className={`${s.formField} ${s.formFull}`}>
+            <label className={s.formLabel}>Cabo eleitoral</label>
+            <div className={s.fixedCaboInfo}>
+              <strong>{fixedCabo.nome}</strong>
+              <span>Zona {fixedCabo.zona} • Título {fixedCabo.titulo}</span>
+            </div>
+          </div>
+        )}
+
+        {showCaboSelector && (
+          <div className={`${s.formField} ${s.formFull}`}>
+            <label className={s.formLabel}>Cabo eleitoral</label>
+            <select {...register('caboEleitoralId')} className={s.formInput}>
+              <option value="">Selecione o cabo</option>
+              {cabos.map(cabo => <option key={cabo.id} value={cabo.id}>{cabo.nome} - Zona {cabo.zona}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className={`${s.formField} ${s.formFull}`}>
           <label className={s.formLabel}>Nome completo</label>
           <input {...register('nome')} className={s.formInput} placeholder="Ex: João da Silva" />
@@ -139,12 +213,15 @@ function EleitorFormModal({
             {...register('cpf', {
               onChange: event => {
                 event.target.value = formatCpf(event.target.value);
+                clearErrors('cpf');
               },
+              onBlur: () => void validateUniqueField('cpf'),
             })}
             className={s.formInput}
             placeholder="000.000.000-00"
             inputMode="numeric"
           />
+          {errors.cpf && <span className={s.formError}>{errors.cpf.message}</span>}
         </div>
 
         <div className={s.formField}>
@@ -153,12 +230,15 @@ function EleitorFormModal({
             {...register('tituloEleitor', {
               onChange: event => {
                 event.target.value = formatTituloEleitor(event.target.value);
+                clearErrors('tituloEleitor');
               },
+              onBlur: () => void validateUniqueField('tituloEleitor'),
             })}
             className={s.formInput}
             placeholder="0000 0000 0000"
             inputMode="numeric"
           />
+          {errors.tituloEleitor && <span className={s.formError}>{errors.tituloEleitor.message}</span>}
         </div>
 
         <div className={s.formField}>
@@ -254,8 +334,10 @@ function EleitorViewModal({ open, onClose, eleitor }: { open: boolean; onClose: 
 function EleitoresContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const { user } = useAuthStore();
 
   const [eleitores, setEleitores] = useState<Eleitor[]>([]);
+  const [cabos, setCabos] = useState<CaboEleitoral[]>([]);
   const [totalEleitores, setTotalEleitores] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -263,6 +345,7 @@ function EleitoresContent() {
   const [search, setSearch] = useState('');
   const [filterZona, setFilterZona] = useState('');
   const [filterPromessa, setFilterPromessa] = useState(searchParams.get('promessa') ?? '');
+  const [filterCabo, setFilterCabo] = useState(searchParams.get('caboEleitoralId') ?? '');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
@@ -274,6 +357,23 @@ function EleitoresContent() {
   const [deleteTarget, setDeleteTarget] = useState<Eleitor | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const selectedCabo = useMemo(
+    () => cabos.find(cabo => cabo.id === filterCabo) ?? null,
+    [cabos, filterCabo]
+  );
+
+  const eleitoresTitle = useMemo(() => {
+    if (user?.role === 'cabo') {
+      return `Eleitores cadastrados por ${user.nome}`;
+    }
+
+    if (selectedCabo) {
+      return `Eleitores cadastrados por ${selectedCabo.nome}`;
+    }
+
+    return 'Eleitores cadastrados por todos os cabos';
+  }, [selectedCabo, user?.nome, user?.role]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -284,6 +384,7 @@ function EleitoresContent() {
         promessa: filterPromessa as '' | 'concluida' | 'pendente' | 'sem',
         sortField,
         sortDir,
+        caboEleitoralId: user?.role === 'admin' ? (filterCabo || undefined) : undefined,
         page,
         perPage: PER_PAGE,
       });
@@ -293,9 +394,16 @@ function EleitoresContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterZona, filterPromessa, sortField, sortDir, page]);
+  }, [search, filterZona, filterPromessa, sortField, sortDir, page, filterCabo, user?.role]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    getCabos({ search: '', page: 1, perPage: 5000 })
+      .then(result => setCabos(result.items))
+      .catch(() => setCabos([]));
+  }, [user?.role]);
 
   // Constrói opções de zona com base no recorte atual retornado pela API.
   const zonas = useMemo(() => {
@@ -306,7 +414,7 @@ function EleitoresContent() {
   const totalPages = Math.max(1, Math.ceil(totalEleitores / PER_PAGE));
 
   // Sempre volta para a primeira página quando filtros/ordenação mudam.
-  useEffect(() => { setPage(1); }, [search, filterZona, filterPromessa, sortField, sortDir]);
+  useEffect(() => { setPage(1); }, [search, filterZona, filterPromessa, sortField, sortDir, filterCabo]);
 
   function handleSort(field: SortField) {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -323,8 +431,15 @@ function EleitoresContent() {
 
   const handleSave = async (data: EleitorForm) => {
     setSaving(true);
-    const sanitizedData = sanitizeEleitorForm(data);
+    const sanitizedData = sanitizeEleitorForm({
+      ...data,
+      caboEleitoralId: user?.role === 'admin' ? (filterCabo || data.caboEleitoralId) : data.caboEleitoralId,
+    });
     try {
+      if (user?.role === 'admin' && !sanitizedData.caboEleitoralId) {
+        toast('Selecione um cabo eleitoral para o eleitor.', 'error');
+        return;
+      }
       if (editTarget) {
         const updated = await updateEleitor(editTarget.id, sanitizedData);
         setEleitores(prev => prev.map(e => e.id === updated.id ? updated : e));
@@ -336,8 +451,8 @@ function EleitoresContent() {
       setFormOpen(false);
       // Recarrega lista para refletir estado real do backend após create/update.
       await load();
-    } catch {
-      toast('Erro ao salvar. Tente novamente.', 'error');
+    } catch (error) {
+      toast(getErrorMessage(error, 'Erro ao salvar. Tente novamente.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -360,6 +475,15 @@ function EleitoresContent() {
 
   return (
     <div className={s.page}>
+      <div className={s.sectionIntro}>
+        <h2 className={s.sectionTitle}>{eleitoresTitle}</h2>
+        <p className={s.sectionSubtitle}>
+          {selectedCabo
+            ? `Gerencie a base vinculada ao cabo ${selectedCabo.nome}.`
+            : 'Use os filtros para localizar eleitores e acompanhar a base por cabo eleitoral.'}
+        </p>
+      </div>
+
       {/* Barra de pesquisa, filtros e ação primária */}
       <div className={s.toolbar}>
         <div className={s.searchWrap}>
@@ -372,6 +496,12 @@ function EleitoresContent() {
           />
         </div>
         <div className={s.filters}>
+          {user?.role === 'admin' && (
+            <select className={s.select} value={filterCabo} onChange={e => setFilterCabo(e.target.value)}>
+              <option value="">Todos os cabos</option>
+              {cabos.map(cabo => <option key={cabo.id} value={cabo.id}>{cabo.nome} - Zona {cabo.zona}</option>)}
+            </select>
+          )}
           <select className={s.select} value={filterZona} onChange={e => setFilterZona(e.target.value)}>
             <option value="">Todas as zonas</option>
             {zonas.map(z => <option key={z} value={z}>Zona {z}</option>)}
@@ -392,7 +522,7 @@ function EleitoresContent() {
       <div className={s.tableCard}>
         <div className={s.tableHeader}>
           <span className={s.tableTitle}>
-            Eleitores <span className={s.tableCount}>({totalEleitores} encontrados)</span>
+            {eleitoresTitle} <span className={s.tableCount}>({totalEleitores} encontrados)</span>
           </span>
         </div>
 
@@ -503,6 +633,9 @@ function EleitoresContent() {
         initial={editTarget}
         onSave={handleSave}
         loading={saving}
+        isAdmin={user?.role === 'admin'}
+        cabos={cabos}
+        selectedCaboId={filterCabo || undefined}
       />
 
       <EleitorViewModal

@@ -7,6 +7,7 @@ type ErrorCode =
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
   | 'CONFLICT'
   | 'DATABASE_ERROR'
   | 'INTERNAL_ERROR';

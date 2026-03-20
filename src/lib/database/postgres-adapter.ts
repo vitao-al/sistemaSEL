@@ -1,21 +1,71 @@
-// Adapter PostgreSQL (Prisma) para operações de usuário e eleitores.
-// Implementa isolamento por usuário em todas as consultas mutáveis e de leitura.
+// Adapter PostgreSQL (Prisma) para operações de admin, cabos eleitorais e eleitores.
 
 import { prisma } from './prisma';
 import { AppError } from '@/lib/errors';
+import { Admin, CaboEleitoral, Eleitor } from '@/types';
 import {
+  AuthUserWithPassword,
+  CaboQueryParams,
+  CreateCaboInput,
   CreateEleitorInput,
   DatabaseAdapter,
+  EleitorUniqueCheckInput,
+  EleitorUniqueConflict,
   EleitorQueryParams,
+  PaginatedCabosResult,
   PaginatedEleitoresResult,
+  SessionScope,
+  UpdateCaboInput,
   UpdateEleitorInput,
-  UserWithPassword,
 } from './types';
-import { Eleitor } from '@/types';
+
+function mapAdmin(record: {
+  id: string;
+  nome: string;
+  email: string;
+  avatar: string | null;
+  cargo: string | null;
+  createdAt: Date;
+}): Admin {
+  return {
+    id: record.id,
+    nome: record.nome,
+    email: record.email,
+    avatar: record.avatar ?? undefined,
+    cargo: record.cargo ?? undefined,
+    createdAt: record.createdAt.toISOString(),
+  };
+}
+
+function mapCabo(record: {
+  id: string;
+  adminId: string;
+  nome: string;
+  titulo: string;
+  zona: string;
+  email: string;
+  avatar: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  admin?: { id: string; nome: string; email: string };
+}): CaboEleitoral {
+  return {
+    id: record.id,
+    adminId: record.adminId,
+    nome: record.nome,
+    titulo: record.titulo,
+    zona: record.zona,
+    email: record.email,
+    avatar: record.avatar ?? undefined,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+    admin: record.admin,
+  };
+}
 
 function mapEleitor(record: {
   id: string;
-  userId: string;
+  caboEleitoralId: string;
   nome: string | null;
   cpf: string | null;
   tituloEleitor: string | null;
@@ -26,10 +76,17 @@ function mapEleitor(record: {
   promessaConcluida: boolean;
   createdAt: Date;
   updatedAt: Date;
+  caboEleitoral?: {
+    id: string;
+    nome: string;
+    titulo: string;
+    zona: string;
+    adminId: string;
+  };
 }): Eleitor {
   return {
     id: record.id,
-    userId: record.userId,
+    caboEleitoralId: record.caboEleitoralId,
     nome: record.nome ?? undefined,
     cpf: record.cpf ?? undefined,
     tituloEleitor: record.tituloEleitor ?? undefined,
@@ -40,14 +97,20 @@ function mapEleitor(record: {
     promessaConcluida: record.promessaConcluida,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+    caboEleitoral: record.caboEleitoral,
   };
 }
 
 export class PostgresDatabaseAdapter implements DatabaseAdapter {
-  private buildEleitorWhere(userId: string, params: EleitorQueryParams) {
+  private buildEleitorWhere(scope: SessionScope, params: EleitorQueryParams) {
     const where: Record<string, unknown> = {};
 
-    where.userId = userId;
+    const targetCaboId = scope.role === 'admin'
+      ? (params.caboEleitoralId || undefined)
+      : scope.caboId;
+
+    if (targetCaboId) where.caboEleitoralId = targetCaboId;
+    else if (scope.role === 'admin' && scope.adminId) where.caboEleitoral = { adminId: scope.adminId };
 
     if (params.search) {
       where.OR = [
@@ -61,92 +124,164 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       ];
     }
 
-    if (params.zona) {
-      where.zona = params.zona;
-    }
-
-    if (params.promessa === 'concluida') {
-      where.AND = [{ promessa: { not: null } }, { promessaConcluida: true }];
-    }
-
-    if (params.promessa === 'pendente') {
-      where.AND = [{ promessa: { not: null } }, { promessaConcluida: false }];
-    }
-
-    if (params.promessa === 'sem') {
-      where.promessa = null;
-    }
+    if (params.zona) where.zona = params.zona;
+    if (params.promessa === 'concluida') where.AND = [{ promessa: { not: null } }, { promessaConcluida: true }];
+    if (params.promessa === 'pendente') where.AND = [{ promessa: { not: null } }, { promessaConcluida: false }];
+    if (params.promessa === 'sem') where.promessa = null;
 
     return where;
   }
 
-  async findUserByCredentials(email: string, senha: string): Promise<UserWithPassword | null> {
+  async findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null> {
     try {
-      const user = await prisma.user.findFirst({ where: { email, senha } });
-      if (!user) return null;
+      const [admin, cabo] = await Promise.all([
+        prisma.admin.findFirst({ where: { email, senha } }),
+        prisma.caboEleitoral.findFirst({ where: { email, senha } }),
+      ]);
+
+      if (admin) {
+        return {
+          id: admin.id,
+          nome: admin.nome,
+          email: admin.email,
+          senha: admin.senha,
+          avatar: admin.avatar ?? undefined,
+          cargo: admin.cargo ?? 'Admin',
+          role: 'admin',
+          adminId: admin.id,
+          createdAt: admin.createdAt.toISOString(),
+        };
+      }
+
+      if (!cabo) return null;
 
       return {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        senha: user.senha,
-        avatar: user.avatar ?? undefined,
-        cargo: user.cargo ?? undefined,
-        createdAt: user.createdAt.toISOString(),
+        id: cabo.id,
+        nome: cabo.nome,
+        email: cabo.email,
+        senha: cabo.senha,
+        avatar: cabo.avatar ?? undefined,
+        cargo: 'Cabo Eleitoral',
+        role: 'cabo',
+        adminId: cabo.adminId,
+        createdAt: cabo.createdAt.toISOString(),
       };
     } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário no banco de dados.');
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao autenticar usuário.');
     }
   }
 
-  async findUserByEmail(email: string): Promise<UserWithPassword | null> {
+  async findAuthUserByEmail(email: string): Promise<AuthUserWithPassword | null> {
     try {
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user) return null;
+      const [admin, cabo] = await Promise.all([
+        prisma.admin.findUnique({ where: { email } }),
+        prisma.caboEleitoral.findUnique({ where: { email } }),
+      ]);
+
+      if (admin) {
+        return {
+          id: admin.id,
+          nome: admin.nome,
+          email: admin.email,
+          senha: admin.senha,
+          avatar: admin.avatar ?? undefined,
+          cargo: admin.cargo ?? 'Admin',
+          role: 'admin',
+          adminId: admin.id,
+          createdAt: admin.createdAt.toISOString(),
+        };
+      }
+
+      if (!cabo) return null;
 
       return {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        senha: user.senha,
-        avatar: user.avatar ?? undefined,
-        cargo: user.cargo ?? undefined,
-        createdAt: user.createdAt.toISOString(),
+        id: cabo.id,
+        nome: cabo.nome,
+        email: cabo.email,
+        senha: cabo.senha,
+        avatar: cabo.avatar ?? undefined,
+        cargo: 'Cabo Eleitoral',
+        role: 'cabo',
+        adminId: cabo.adminId,
+        createdAt: cabo.createdAt.toISOString(),
       };
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário por email.');
     }
   }
 
-  async findUserById(id: string): Promise<UserWithPassword | null> {
+  async findAuthUserById(role: 'admin' | 'cabo', id: string): Promise<AuthUserWithPassword | null> {
     try {
-      const user = await prisma.user.findUnique({ where: { id } });
-      if (!user) return null;
+      if (role === 'admin') {
+        const admin = await prisma.admin.findUnique({ where: { id } });
+        if (!admin) return null;
+
+        return {
+          id: admin.id,
+          nome: admin.nome,
+          email: admin.email,
+          senha: admin.senha,
+          avatar: admin.avatar ?? undefined,
+          cargo: admin.cargo ?? 'Admin',
+          role: 'admin',
+          adminId: admin.id,
+          createdAt: admin.createdAt.toISOString(),
+        };
+      }
+
+      const cabo = await prisma.caboEleitoral.findUnique({ where: { id } });
+      if (!cabo) return null;
 
       return {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        senha: user.senha,
-        avatar: user.avatar ?? undefined,
-        cargo: user.cargo ?? undefined,
-        createdAt: user.createdAt.toISOString(),
+        id: cabo.id,
+        nome: cabo.nome,
+        email: cabo.email,
+        senha: cabo.senha,
+        avatar: cabo.avatar ?? undefined,
+        cargo: 'Cabo Eleitoral',
+        role: 'cabo',
+        adminId: cabo.adminId,
+        createdAt: cabo.createdAt.toISOString(),
       };
     } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário por ID.');
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário.');
     }
   }
 
-  async updateUser(id: string, data: Partial<UserWithPassword>): Promise<UserWithPassword> {
+  async updateAuthUser(role: 'admin' | 'cabo', id: string, data: Partial<AuthUserWithPassword>): Promise<AuthUserWithPassword> {
     try {
-      const updated = await prisma.user.update({
+      if (role === 'admin') {
+        const updated = await prisma.admin.update({
+          where: { id },
+          data: {
+            nome: data.nome,
+            email: data.email,
+            senha: data.senha,
+            avatar: data.avatar,
+            cargo: data.cargo,
+          },
+        });
+
+        return {
+          id: updated.id,
+          nome: updated.nome,
+          email: updated.email,
+          senha: updated.senha,
+          avatar: updated.avatar ?? undefined,
+          cargo: updated.cargo ?? 'Admin',
+          role: 'admin',
+          adminId: updated.id,
+          createdAt: updated.createdAt.toISOString(),
+        };
+      }
+
+      const updated = await prisma.caboEleitoral.update({
         where: { id },
         data: {
           nome: data.nome,
           email: data.email,
           senha: data.senha,
           avatar: data.avatar,
-          cargo: data.cargo,
         },
       });
 
@@ -156,7 +291,9 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         email: updated.email,
         senha: updated.senha,
         avatar: updated.avatar ?? undefined,
-        cargo: updated.cargo ?? undefined,
+        cargo: 'Cabo Eleitoral',
+        role: 'cabo',
+        adminId: updated.adminId,
         createdAt: updated.createdAt.toISOString(),
       };
     } catch {
@@ -164,117 +301,299 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
-  async listEleitores(userId: string): Promise<Eleitor[]> {
-    try {
-      const eleitores = await prisma.eleitor.findMany({
-        where: { userId },
+  async listAdmins(): Promise<Admin[]> {
+    const admins = await prisma.admin.findMany({ orderBy: { nome: 'asc' } });
+    return admins.map(mapAdmin);
+  }
+
+  async listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult> {
+    const page = Math.max(1, params.page);
+    const perPage = Math.max(1, params.perPage);
+    const skip = (page - 1) * perPage;
+
+    const where: Record<string, unknown> = { adminId };
+    if (params.search) {
+      where.OR = [
+        { nome: { contains: params.search, mode: 'insensitive' } },
+        { titulo: { contains: params.search, mode: 'insensitive' } },
+        { zona: { contains: params.search, mode: 'insensitive' } },
+        { email: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.caboEleitoral.findMany({
+        where,
+        skip,
+        take: perPage,
         orderBy: { createdAt: 'desc' },
-      });
-      return eleitores.map(mapEleitor);
-    } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao listar eleitores.');
-    }
+        include: { admin: { select: { id: true, nome: true, email: true } } },
+      }),
+      prisma.caboEleitoral.count({ where }),
+    ]);
+
+    return { items: items.map(mapCabo), total, page, perPage };
   }
 
-  async queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
-    try {
-      const page = Math.max(1, params.page);
-      const perPage = Math.max(1, params.perPage);
-      const skip = (page - 1) * perPage;
-      const sortField = params.sortField ?? 'createdAt';
-      const sortDir = params.sortDir ?? 'desc';
+  async findCaboById(id: string): Promise<CaboEleitoral | null> {
+    const cabo = await prisma.caboEleitoral.findUnique({
+      where: { id },
+      include: { admin: { select: { id: true, nome: true, email: true } } },
+    });
 
-      const where = this.buildEleitorWhere(userId, params);
-
-      const [items, total] = await Promise.all([
-        prisma.eleitor.findMany({
-          where,
-          orderBy: { [sortField]: sortDir },
-          skip,
-          take: perPage,
-        }),
-        prisma.eleitor.count({ where }),
-      ]);
-
-      return {
-        items: items.map(mapEleitor),
-        total,
-        page,
-        perPage,
-      };
-    } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar eleitores com filtros.');
-    }
+    return cabo ? mapCabo(cabo) : null;
   }
 
-  async findEleitorById(userId: string, id: string): Promise<Eleitor | null> {
+  async createCabo(adminId: string, data: CreateCaboInput): Promise<CaboEleitoral> {
     try {
-      const eleitor = await prisma.eleitor.findFirst({ where: { id, userId } });
-      return eleitor ? mapEleitor(eleitor) : null;
-    } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar eleitor.');
-    }
-  }
-
-  async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
-    try {
-      const eleitor = await prisma.eleitor.create({
+      const cabo = await prisma.caboEleitoral.create({
         data: {
-          userId,
+          adminId,
           nome: data.nome,
-          cpf: data.cpf,
-          tituloEleitor: data.tituloEleitor,
-          sessao: data.sessao,
+          titulo: data.titulo,
           zona: data.zona,
-          localVotacao: data.localVotacao,
-          promessa: data.promessa,
-          promessaConcluida: data.promessaConcluida ?? false,
+          email: data.email,
+          senha: data.senha,
         },
       });
 
-      return mapEleitor(eleitor);
+      return mapCabo(cabo);
     } catch {
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao criar eleitor.');
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao criar cabo eleitoral.');
     }
   }
 
-  async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+  async updateCabo(id: string, data: UpdateCaboInput): Promise<CaboEleitoral> {
     try {
-      const existing = await prisma.eleitor.findFirst({ where: { id, userId } });
-      if (!existing) {
-        throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
-      }
-
-      const eleitor = await prisma.eleitor.update({
+      const cabo = await prisma.caboEleitoral.update({
         where: { id },
         data: {
           nome: data.nome,
-          cpf: data.cpf,
-          tituloEleitor: data.tituloEleitor,
-          sessao: data.sessao,
+          titulo: data.titulo,
           zona: data.zona,
-          localVotacao: data.localVotacao,
-          promessa: data.promessa,
-          promessaConcluida: data.promessaConcluida,
+          email: data.email,
+          senha: data.senha,
         },
       });
 
-      return mapEleitor(eleitor);
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao atualizar eleitor.');
+      return mapCabo(cabo);
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao atualizar cabo eleitoral.');
     }
   }
 
-  async deleteEleitor(userId: string, id: string): Promise<void> {
+  async deleteCabo(id: string): Promise<void> {
     try {
-      const result = await prisma.eleitor.deleteMany({ where: { id, userId } });
-      if (result.count === 0) {
-        throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
-      }
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      throw new AppError('DATABASE_ERROR', 500, 'Falha ao remover eleitor.');
+      await prisma.caboEleitoral.delete({ where: { id } });
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao remover cabo eleitoral.');
     }
+  }
+
+  async listEleitores(scope: SessionScope, caboEleitoralId?: string): Promise<Eleitor[]> {
+    const where: Record<string, unknown> = {};
+
+    if (scope.role === 'cabo' && scope.caboId) {
+      where.caboEleitoralId = scope.caboId;
+    } else if (scope.role === 'admin' && scope.adminId) {
+      if (caboEleitoralId) where.caboEleitoralId = caboEleitoralId;
+      else where.caboEleitoral = { adminId: scope.adminId };
+    }
+
+    const eleitores = await prisma.eleitor.findMany({
+      where,
+      include: {
+        caboEleitoral: {
+          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return eleitores.map(mapEleitor);
+  }
+
+  async queryEleitores(scope: SessionScope, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
+    const page = Math.max(1, params.page);
+    const perPage = Math.max(1, params.perPage);
+    const skip = (page - 1) * perPage;
+    const sortField = params.sortField ?? 'createdAt';
+    const sortDir = params.sortDir ?? 'desc';
+
+    const where = this.buildEleitorWhere(scope, params);
+
+    const [items, total] = await Promise.all([
+      prisma.eleitor.findMany({
+        where,
+        orderBy: { [sortField]: sortDir },
+        skip,
+        take: perPage,
+        include: {
+          caboEleitoral: {
+            select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+          },
+        },
+      }),
+      prisma.eleitor.count({ where }),
+    ]);
+
+    return {
+      items: items.map(mapEleitor),
+      total,
+      page,
+      perPage,
+    };
+  }
+
+  async findEleitorById(scope: SessionScope, id: string): Promise<Eleitor | null> {
+    const where = this.buildEleitorWhere(scope, { page: 1, perPage: 1 });
+    const eleitor = await prisma.eleitor.findFirst({
+      where: { ...where, id },
+      include: {
+        caboEleitoral: {
+          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+        },
+      },
+    });
+
+    return eleitor ? mapEleitor(eleitor) : null;
+  }
+
+  async findEleitorUniqueConflicts(input: EleitorUniqueCheckInput): Promise<EleitorUniqueConflict[]> {
+    const orConditions: Array<Record<string, string>> = [];
+
+    if (input.cpf) {
+      orConditions.push({ cpf: input.cpf });
+    }
+
+    if (input.tituloEleitor) {
+      orConditions.push({ tituloEleitor: input.tituloEleitor });
+    }
+
+    if (orConditions.length === 0) {
+      return [];
+    }
+
+    try {
+      const eleitores = await prisma.eleitor.findMany({
+        where: {
+          OR: orConditions,
+          ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
+        },
+        select: {
+          id: true,
+          nome: true,
+          cpf: true,
+          tituloEleitor: true,
+        },
+      });
+
+      const conflicts: EleitorUniqueConflict[] = [];
+
+      eleitores.forEach(eleitor => {
+        if (input.cpf && eleitor.cpf === input.cpf) {
+          conflicts.push({ id: eleitor.id, field: 'cpf', value: input.cpf, nome: eleitor.nome ?? undefined });
+        }
+
+        if (input.tituloEleitor && eleitor.tituloEleitor === input.tituloEleitor) {
+          conflicts.push({ id: eleitor.id, field: 'tituloEleitor', value: input.tituloEleitor, nome: eleitor.nome ?? undefined });
+        }
+      });
+
+      return conflicts;
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao validar CPF e título de eleitor.');
+    }
+  }
+
+  async createEleitor(scope: SessionScope, data: CreateEleitorInput): Promise<Eleitor> {
+    const caboEleitoralId = scope.role === 'admin'
+      ? data.caboEleitoralId
+      : scope.caboId;
+
+    if (!caboEleitoralId) {
+      throw new AppError('VALIDATION_ERROR', 400, 'Cabo eleitoral obrigatório para criar eleitor.');
+    }
+
+    const cabo = await prisma.caboEleitoral.findUnique({ where: { id: caboEleitoralId } });
+    if (!cabo) {
+      throw new AppError('NOT_FOUND', 404, 'Cabo eleitoral não encontrado.');
+    }
+
+    if (scope.role === 'admin' && cabo.adminId !== scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Cabo eleitoral não pertence ao admin autenticado.');
+    }
+
+    if (scope.role === 'cabo' && cabo.id !== scope.caboId) {
+      throw new AppError('FORBIDDEN', 403, 'Cabo eleitoral inválido para este usuário.');
+    }
+
+    const eleitor = await prisma.eleitor.create({
+      data: {
+        caboEleitoralId,
+        nome: data.nome,
+        cpf: data.cpf,
+        tituloEleitor: data.tituloEleitor,
+        sessao: data.sessao,
+        zona: data.zona,
+        localVotacao: data.localVotacao,
+        promessa: data.promessa,
+        promessaConcluida: data.promessaConcluida ?? false,
+      },
+      include: {
+        caboEleitoral: {
+          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+        },
+      },
+    });
+
+    return mapEleitor(eleitor);
+  }
+
+  async updateEleitor(scope: SessionScope, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+    const existing = await this.findEleitorById(scope, id);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
+    }
+
+    let caboEleitoralId = existing.caboEleitoralId;
+    if (scope.role === 'admin' && data.caboEleitoralId) {
+      const cabo = await prisma.caboEleitoral.findUnique({ where: { id: data.caboEleitoralId } });
+      if (!cabo || cabo.adminId !== scope.adminId) {
+        throw new AppError('FORBIDDEN', 403, 'Cabo eleitoral inválido.');
+      }
+      caboEleitoralId = data.caboEleitoralId;
+    }
+
+    const eleitor = await prisma.eleitor.update({
+      where: { id },
+      data: {
+        caboEleitoralId,
+        nome: data.nome,
+        cpf: data.cpf,
+        tituloEleitor: data.tituloEleitor,
+        sessao: data.sessao,
+        zona: data.zona,
+        localVotacao: data.localVotacao,
+        promessa: data.promessa,
+        promessaConcluida: data.promessaConcluida,
+      },
+      include: {
+        caboEleitoral: {
+          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+        },
+      },
+    });
+
+    return mapEleitor(eleitor);
+  }
+
+  async deleteEleitor(scope: SessionScope, id: string): Promise<void> {
+    const existing = await this.findEleitorById(scope, id);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 404, 'Eleitor não encontrado.');
+    }
+
+    await prisma.eleitor.delete({ where: { id } });
   }
 }

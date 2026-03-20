@@ -20,6 +20,9 @@
 .sidebarTop {
   padding: 20px 20px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .brand {
@@ -46,6 +49,21 @@
   font-weight: 700;
   color: white;
   letter-spacing: -0.3px;
+}
+
+.sidebarClose {
+  display: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--text-sidebar);
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebarClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
 }
 
 .nav {
@@ -205,6 +223,23 @@
   gap: 10px;
 }
 
+.mobileMenuBtn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  background: var(--surface-bg);
+}
+
+.mobileMenuBtn:hover {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
 .pageMeta {
   display: flex;
   flex-direction: column;
@@ -254,13 +289,21 @@
 
 @media (max-width: 1024px) {
   .sidebar {
+    width: min(320px, 88vw);
     transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
   }
   .sidebar.open {
     transform: translateX(0);
   }
+  .sidebarClose {
+    display: inline-flex;
+  }
   .main {
     margin-left: 0;
+  }
+  .mobileMenuBtn {
+    display: inline-flex;
   }
   .mobileOverlay {
     display: block;
@@ -276,17 +319,33 @@
 
 @media (max-width: 640px) {
   .header {
+    min-height: 56px;
     height: auto;
-    padding: 12px;
+    padding: 10px 12px;
+  }
+  .headerLeft {
+    min-width: 0;
+    flex: 1;
   }
   .pageTitle {
-    font-size: 16px;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 190px;
   }
   .pageBreadcrumb {
-    font-size: 12px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
   }
   .headerRight {
-    gap: 8px;
+    gap: 6px;
+  }
+  .content {
+    padding: 14px 12px 20px;
   }
   .userCard {
     padding: 10px;

@@ -9,34 +9,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
+model Admin {
+  id        String          @id @default(cuid())
   nome      String
-  email     String   @unique
+  email     String          @unique
   senha     String
   avatar    String?
   cargo     String?
+  cabos     CaboEleitoral[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("User")
+}
+
+model CaboEleitoral {
+  id        String    @id @default(cuid())
+  adminId   String
+  admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  nome      String
+  titulo    String
+  zona      String
+  email     String    @unique
+  senha     String
+  avatar    String?
   eleitores Eleitor[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([adminId])
 }
 
 model Eleitor {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
+  id                String         @id @default(cuid())
+  caboEleitoralId   String         @map("userId")
+  caboEleitoral     CaboEleitoral  @relation(fields: [caboEleitoralId], references: [id], onDelete: Cascade)
   nome              String?
-  cpf               String?
-  tituloEleitor     String?
+  cpf               String?        @unique
+  tituloEleitor     String?        @unique
   sessao            String?
   zona              String?
   localVotacao      String?
   promessa          String?
-  promessaConcluida Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  promessaConcluida Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  @@index([userId])
+  @@index([caboEleitoralId])
   @@index([createdAt])
   @@index([zona])
   @@index([promessaConcluida])

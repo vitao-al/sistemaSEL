@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
-import { requireAuthenticatedUserId } from '@/lib/auth/session';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
 
 // Schema de atualização parcial do eleitor.
 const eleitorUpdateSchema = z.object({
@@ -17,20 +17,21 @@ const eleitorUpdateSchema = z.object({
   localVotacao: z.string().optional(),
   promessa: z.string().optional(),
   promessaConcluida: z.boolean().optional(),
+  caboEleitoralId: z.string().optional(),
 });
 
 type RouteParams = {
   params: { id: string };
 };
 
-export async function GET(_: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    // 1) Resolve usuário autenticado.
-    const userId = requireAuthenticatedUserId(_);
+    // 1) Resolve sessão autenticada.
+    const scope = requireAuthenticatedScope(request);
 
-    // 2) Busca eleitor no escopo do usuário.
+    // 2) Busca eleitor no escopo da sessão.
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.getEleitorById(userId, params.id);
+    const eleitor = await eleitorService.getEleitorById(scope, params.id);
 
     // 3) Retorna 404 quando não existe no escopo do usuário.
     if (!eleitor) {
@@ -45,16 +46,16 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    // 1) Resolve usuário autenticado.
-    const userId = requireAuthenticatedUserId(request);
+    // 1) Resolve sessão autenticada.
+    const scope = requireAuthenticatedScope(request);
 
     // 2) Valida payload de atualização.
     const body = await request.json();
     const input = eleitorUpdateSchema.parse(body);
 
-    // 3) Atualiza recurso somente dentro do escopo do usuário.
+    // 3) Atualiza recurso somente dentro do escopo da sessão.
     const { eleitorService } = createServerServices();
-    const eleitor = await eleitorService.updateEleitor(userId, params.id, input);
+    const eleitor = await eleitorService.updateEleitor(scope, params.id, input);
 
     return NextResponse.json({ success: true, data: eleitor }, { status: 200 });
   } catch (error) {
@@ -68,14 +69,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    // 1) Resolve usuário autenticado.
-    const userId = requireAuthenticatedUserId(_);
+    // 1) Resolve sessão autenticada.
+    const scope = requireAuthenticatedScope(request);
 
-    // 2) Remove eleitor no escopo do usuário autenticado.
+    // 2) Remove eleitor no escopo da sessão.
     const { eleitorService } = createServerServices();
-    await eleitorService.deleteEleitor(userId, params.id);
+    await eleitorService.deleteEleitor(scope, params.id);
 
     return NextResponse.json({ success: true, data: { ok: true } }, { status: 200 });
   } catch (error) {

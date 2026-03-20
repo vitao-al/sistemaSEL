@@ -6,7 +6,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Users, CheckCircle2, Clock, UserPlus, TrendingUp, Plus } from 'lucide-react';
+import { Users, CheckCircle2, Clock, UserPlus, TrendingUp, Plus, CalendarClock, UserCheck } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { StatCard, ChartCard, Skeleton } from '@/components/ui';
 import { getDashboardStats } from '@/lib/data';
@@ -40,7 +40,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,16 +168,16 @@ export default function DashboardPage() {
           />
           <div
             className={s.bannerCard}
-            onClick={() => router.push('/eleitores')}
+            onClick={() => router.push(user?.role === 'admin' ? '/cabos' : '/eleitores')}
             style={{ cursor: 'pointer' }}
           >
             <div className={s.bannerBg} />
             <div className={s.bannerBg2} />
             <div className={s.bannerLabel}>Ação rápida</div>
-            <div className={s.bannerValue} style={{ fontSize: 22 }}>Adicionar Eleitor</div>
+            <div className={s.bannerValue} style={{ fontSize: 22 }}>{user?.role === 'admin' ? 'Gerenciar Cabos' : 'Adicionar Eleitor'}</div>
             <div className={s.bannerBadge}>
               <Plus size={12} />
-              Cadastrar novo
+              {user?.role === 'admin' ? 'Abrir gestão' : 'Cadastrar novo'}
             </div>
           </div>
         </div>
@@ -271,7 +271,15 @@ export default function DashboardPage() {
 
           {/* Card de contexto operacional sobre o último eleitor cadastrado */}
           <div className={s.lastVoterCard}>
-            <div className={s.lastVoterTitle}>Último Eleitor Adicionado</div>
+            <div className={s.lastVoterHeader}>
+              <div className={s.lastVoterTitle}>Último Eleitor Adicionado</div>
+              {stats.ultimoEleitorAdicionado && (
+                <div className={s.lastVoterTimestamp}>
+                  <CalendarClock size={12} />
+                  {format(new Date(stats.ultimoEleitorAdicionado.createdAt), "d 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                </div>
+              )}
+            </div>
             {stats.ultimoEleitorAdicionado ? (
               <>
                 <div className={s.voterRow}>
@@ -281,10 +289,24 @@ export default function DashboardPage() {
                   <div className={s.voterInfo}>
                     <div className={s.voterName}>{stats.ultimoEleitorAdicionado.nome ?? '—'}</div>
                     <div className={s.voterMeta}>
-                      Adicionado em {format(new Date(stats.ultimoEleitorAdicionado.createdAt), "d 'de' MMM 'de' yyyy", { locale: ptBR })}
+                      {format(new Date(stats.ultimoEleitorAdicionado.createdAt), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
                     </div>
                   </div>
                 </div>
+
+                {/* Cabo que cadastrou */}
+                {stats.ultimoEleitorAdicionado.caboEleitoral && (
+                  <div className={s.caboEleitoral}>
+                    <div className={s.caboEleitoralIcon}>
+                      <UserCheck size={14} />
+                    </div>
+                    <div className={s.caboEleitoralInfo}>
+                      <span className={s.caboEleitoralLabel}>Cadastrado por</span>
+                      <span className={s.caboEleitoralName}>{stats.ultimoEleitorAdicionado.caboEleitoral.nome}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className={s.voterFields}>
                   <div className={s.voterField}>
                     <div className={s.voterFieldLabel}>Zona</div>

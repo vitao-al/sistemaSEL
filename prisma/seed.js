@@ -1,25 +1,43 @@
 // Seed inicial para ambiente de desenvolvimento.
-// Garante usuário base e um conjunto mínimo de eleitores vinculados a ele.
+// Cria admin padrão, cabos eleitorais e eleitores vinculados ao cabo.
 
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const user = await prisma.user.upsert({
-    where: { email: 'leunam@hotmal.com' },
+  const admin = await prisma.admin.upsert({
+    where: { email: 'admin@sistemasel.com' },
     update: {
-      nome: 'Manuel Almeida Pinto',
+      nome: 'Administrador Geral',
       senha: '123456',
-      cargo: 'Vereador',
+      cargo: 'Admin',
       avatar: 'leunamprofile.png',
     },
     create: {
-      nome: 'Manuel Almeida Pinto',
-      email: 'leunam@hotmal.com',
+      nome: 'Administrador Geral',
+      email: 'admin@sistemasel.com',
       senha: '123456',
-      cargo: 'Vereador',
+      cargo: 'Admin',
       avatar: 'leunamprofile.png',
+    },
+  });
+
+  const cabo = await prisma.caboEleitoral.upsert({
+    where: { email: 'cabo1@sistemasel.com' },
+    update: {
+      nome: 'Carlos Andrade',
+      titulo: '111122223333',
+      zona: '01',
+      senha: '123456',
+    },
+    create: {
+      adminId: admin.id,
+      nome: 'Carlos Andrade',
+      titulo: '111122223333',
+      zona: '01',
+      email: 'cabo1@sistemasel.com',
+      senha: '123456',
     },
   });
 
@@ -28,9 +46,9 @@ async function main() {
     await prisma.eleitor.createMany({
       data: [
         {
-          userId: user.id,
+          caboEleitoralId: cabo.id,
           nome: 'José Silva',
-          cpf: '123.456.789-00',
+          cpf: '12345678900',
           tituloEleitor: '111122223333',
           sessao: '0001',
           zona: '01',
@@ -39,9 +57,9 @@ async function main() {
           promessaConcluida: false,
         },
         {
-          userId: user.id,
+          caboEleitoralId: cabo.id,
           nome: 'Maria Santos',
-          cpf: '987.654.321-00',
+          cpf: '98765432100',
           tituloEleitor: '444455556666',
           sessao: '0002',
           zona: '02',

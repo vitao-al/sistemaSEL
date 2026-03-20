@@ -1,13 +1,29 @@
-import { Eleitor, User } from '@/types';
+import { Admin, AuthRole, AuthUser, CaboEleitoral, Eleitor } from '@/types';
 
-// Usuário com senha disponível apenas na camada de persistência/serviço.
-export type UserWithPassword = User & { senha: string };
+export type AdminWithPassword = Admin & { senha: string };
+export type CaboWithPassword = CaboEleitoral & { senha: string };
+export type AuthUserWithPassword = (AuthUser & { senha: string }) & { role: AuthRole };
 
-// =========================
-// Payloads de Eleitor
-// =========================
+export interface SessionScope {
+  role: AuthRole;
+  userId: string;
+  adminId?: string;
+  caboId?: string;
+}
 
-// Estrutura base dos dados recebidos para criar/atualizar eleitor.
+export interface EleitorUniqueCheckInput {
+  cpf?: string;
+  tituloEleitor?: string;
+  excludeId?: string;
+}
+
+export interface EleitorUniqueConflict {
+  id: string;
+  field: 'cpf' | 'tituloEleitor';
+  value: string;
+  nome?: string;
+}
+
 export interface EleitorPayload {
   nome?: string;
   cpf?: string;
@@ -17,28 +33,27 @@ export interface EleitorPayload {
   localVotacao?: string;
   promessa?: string;
   promessaConcluida?: boolean;
+  caboEleitoralId?: string;
 }
 
-// Payload de criação: usa a estrutura base completa.
 export type CreateEleitorInput = EleitorPayload;
-
-// Payload de atualização: parcial para permitir edição campo a campo.
 export type UpdateEleitorInput = Partial<EleitorPayload>;
 
-// =========================
-// Tipos de consulta/listagem
-// =========================
+export interface CaboPayload {
+  nome: string;
+  titulo: string;
+  zona: string;
+  email: string;
+  senha: string;
+}
 
-// Campos permitidos para ordenação de eleitores.
+export type CreateCaboInput = CaboPayload;
+export type UpdateCaboInput = Partial<CaboPayload>;
+
 export type EleitorSortField = 'nome' | 'zona' | 'createdAt';
-
-// Direção da ordenação.
 export type EleitorSortDir = 'asc' | 'desc';
-
-// Filtro de promessa utilizado nas buscas.
 export type EleitorPromessaFilter = '' | 'concluida' | 'pendente' | 'sem';
 
-// Parâmetros de consulta paginada de eleitores.
 export interface EleitorQueryParams {
   search?: string;
   zona?: string;
@@ -47,9 +62,15 @@ export interface EleitorQueryParams {
   sortDir?: EleitorSortDir;
   page: number;
   perPage: number;
+  caboEleitoralId?: string;
 }
 
-// Resultado paginado retornado para a lista de eleitores.
+export interface CaboQueryParams {
+  search?: string;
+  page: number;
+  perPage: number;
+}
+
 export interface PaginatedEleitoresResult {
   items: Eleitor[];
   total: number;
@@ -57,23 +78,32 @@ export interface PaginatedEleitoresResult {
   perPage: number;
 }
 
-// =========================
-// Contrato do adapter de banco
-// =========================
+export interface PaginatedCabosResult {
+  items: CaboEleitoral[];
+  total: number;
+  page: number;
+  perPage: number;
+}
 
-// Interface única que abstrai as operações de dados, independente do storage (Postgres ou local).
 export interface DatabaseAdapter {
-  // Operações de usuário/autenticação.
-  findUserByCredentials(email: string, senha: string): Promise<UserWithPassword | null>;
-  findUserByEmail(email: string): Promise<UserWithPassword | null>;
-  findUserById(id: string): Promise<UserWithPassword | null>;
-  updateUser(id: string, data: Partial<UserWithPassword>): Promise<UserWithPassword>;
+  findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null>;
+  findAuthUserByEmail(email: string): Promise<AuthUserWithPassword | null>;
+  findAuthUserById(role: AuthRole, id: string): Promise<AuthUserWithPassword | null>;
+  updateAuthUser(role: AuthRole, id: string, data: Partial<AuthUserWithPassword>): Promise<AuthUserWithPassword>;
 
-  // Operações de eleitor (sempre escopadas por userId).
-  listEleitores(userId: string): Promise<Eleitor[]>;
-  queryEleitores(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult>;
-  findEleitorById(userId: string, id: string): Promise<Eleitor | null>;
-  createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor>;
-  updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor>;
-  deleteEleitor(userId: string, id: string): Promise<void>;
+  listAdmins(): Promise<Admin[]>;
+
+  listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult>;
+  findCaboById(id: string): Promise<CaboEleitoral | null>;
+  createCabo(adminId: string, data: CreateCaboInput): Promise<CaboEleitoral>;
+  updateCabo(id: string, data: UpdateCaboInput): Promise<CaboEleitoral>;
+  deleteCabo(id: string): Promise<void>;
+
+  listEleitores(scope: SessionScope, caboEleitoralId?: string): Promise<Eleitor[]>;
+  queryEleitores(scope: SessionScope, params: EleitorQueryParams): Promise<PaginatedEleitoresResult>;
+  findEleitorById(scope: SessionScope, id: string): Promise<Eleitor | null>;
+  findEleitorUniqueConflicts(input: EleitorUniqueCheckInput): Promise<EleitorUniqueConflict[]>;
+  createEleitor(scope: SessionScope, data: CreateEleitorInput): Promise<Eleitor>;
+  updateEleitor(scope: SessionScope, id: string, data: UpdateEleitorInput): Promise<Eleitor>;
+  deleteEleitor(scope: SessionScope, id: string): Promise<void>;
 }

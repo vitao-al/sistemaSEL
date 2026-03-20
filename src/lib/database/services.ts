@@ -1,88 +1,223 @@
-import { DashboardStats, Eleitor, User } from '@/types';
+import { Admin, AuthRole, AuthUser, CaboEleitoral, DashboardStats, Eleitor } from '@/types';
 import { AppError } from '@/lib/errors';
-import { CreateEleitorInput, DatabaseAdapter, EleitorQueryParams, PaginatedEleitoresResult, UpdateEleitorInput } from './types';
+import { signAuthToken } from '@/lib/auth/jwt';
+import {
+  CaboQueryParams,
+  CreateCaboInput,
+  CreateEleitorInput,
+  DatabaseAdapter,
+  EleitorUniqueCheckInput,
+  EleitorUniqueConflict,
+  EleitorQueryParams,
+  PaginatedCabosResult,
+  PaginatedEleitoresResult,
+  SessionScope,
+  UpdateCaboInput,
+  UpdateEleitorInput,
+} from './types';
 
-// Remove a senha do objeto de usuário antes de devolver para camadas externas.
-function withoutPassword(user: User & { senha: string }): User {
+function withoutPassword<T extends { senha: string }>(user: T): Omit<T, 'senha'> {
   const { senha: _senha, ...safeUser } = user;
   return safeUser;
 }
 
-// =========================
-// Serviço de autenticação
-// =========================
+function normalizeDigits(value?: string) {
+  const digits = value?.replace(/\D/g, '').trim();
+  return digits ? digits : undefined;
+}
+
+function normalizeOptionalText(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export class AuthService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
-  // Realiza login validando credenciais no adapter de dados.
-  async login(email: string, senha: string): Promise<{ user: User; token: string }> {
-    const foundUser = await this.adapter.findUserByCredentials(email, senha);
+  async login(email: string, senha: string): Promise<{ user: AuthUser; token: string }> {
+    const foundUser = await this.adapter.findAuthUserByCredentials(email, senha);
     if (!foundUser) {
       throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
     }
 
+    if (foundUser.role === 'admin' && !foundUser.adminId) {
+      throw new AppError('INTERNAL_ERROR', 500, 'Sessão inválida para admin.');
+    }
+
+    if (foundUser.role === 'cabo' && !foundUser.adminId) {
+      throw new AppError('INTERNAL_ERROR', 500, 'Sessão inválida para cabo eleitoral.');
+    }
+
     return {
       user: withoutPassword(foundUser),
-      token: `mock-token-${foundUser.id}-${Date.now()}`,
+      token: signAuthToken({
+        sub: foundUser.id,
+        role: foundUser.role,
+        adminId: foundUser.adminId,
+      }),
     };
   }
 
-  // Fluxo de recuperação: valida apenas existência do email.
   async forgotPassword(email: string): Promise<void> {
-    const foundUser = await this.adapter.findUserByEmail(email);
+    const foundUser = await this.adapter.findAuthUserByEmail(email);
     if (!foundUser) {
       throw new AppError('NOT_FOUND', 404, 'Email não encontrado.');
     }
   }
 }
 
-// =========================
-// Serviço de eleitores
-// =========================
+export class CaboService {
+  constructor(private readonly adapter: DatabaseAdapter) {}
+
+  async listAdmins(): Promise<Admin[]> {
+    return this.adapter.listAdmins();
+  }
+
+  async getCabosPage(scope: SessionScope, params: CaboQueryParams): Promise<PaginatedCabosResult> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem gerenciar cabos eleitorais.');
+    }
+
+    return this.adapter.listCabos(scope.adminId, params);
+  }
+
+  async createCabo(scope: SessionScope, data: CreateCaboInput): Promise<CaboEleitoral> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem criar cabos eleitorais.');
+    }
+
+    const userWithEmail = await this.adapter.findAuthUserByEmail(data.email);
+    if (userWithEmail) {
+      throw new AppError('CONFLICT', 409, 'Este email já está em uso.');
+    }
+
+    return this.adapter.createCabo(scope.adminId, data);
+  }
+
+  async updateCabo(scope: SessionScope, caboId: string, data: UpdateCaboInput): Promise<CaboEleitoral> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem editar cabos eleitorais.');
+    }
+
+    const cabo = await this.adapter.findCaboById(caboId);
+    if (!cabo || cabo.adminId !== scope.adminId) {
+      throw new AppError('NOT_FOUND', 404, 'Cabo eleitoral não encontrado.');
+    }
+
+    if (data.email) {
+      const userWithEmail = await this.adapter.findAuthUserByEmail(data.email);
+      if (userWithEmail && userWithEmail.id !== caboId) {
+        throw new AppError('CONFLICT', 409, 'Este email já está em uso.');
+      }
+    }
+
+    return this.adapter.updateCabo(caboId, data);
+  }
+
+  async deleteCabo(scope: SessionScope, caboId: string): Promise<void> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem remover cabos eleitorais.');
+    }
+
+    const cabo = await this.adapter.findCaboById(caboId);
+    if (!cabo || cabo.adminId !== scope.adminId) {
+      throw new AppError('NOT_FOUND', 404, 'Cabo eleitoral não encontrado.');
+    }
+
+    await this.adapter.deleteCabo(caboId);
+  }
+}
+
 export class EleitorService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
-  // Lista paginada de eleitores do usuário autenticado.
-  async getEleitoresPage(userId: string, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
-    return this.adapter.queryEleitores(userId, params);
+  private sanitizeEleitorInput<T extends CreateEleitorInput | UpdateEleitorInput>(data: T): T {
+    return {
+      ...data,
+      nome: normalizeOptionalText(data.nome),
+      cpf: normalizeDigits(data.cpf),
+      tituloEleitor: normalizeDigits(data.tituloEleitor),
+      sessao: normalizeOptionalText(data.sessao),
+      zona: normalizeOptionalText(data.zona),
+      localVotacao: normalizeOptionalText(data.localVotacao),
+      promessa: normalizeOptionalText(data.promessa),
+      caboEleitoralId: normalizeOptionalText(data.caboEleitoralId),
+    } as T;
   }
 
-  // Lista completa (ordenada) de eleitores do usuário autenticado.
-  async getEleitores(userId: string): Promise<Eleitor[]> {
-    const eleitores = await this.adapter.listEleitores(userId);
+  private async ensureUniqueEleitorData(data: EleitorUniqueCheckInput, excludeId?: string): Promise<void> {
+    const conflicts = await this.adapter.findEleitorUniqueConflicts({
+      cpf: normalizeDigits(data.cpf),
+      tituloEleitor: normalizeDigits(data.tituloEleitor),
+      excludeId,
+    });
+
+    if (conflicts.length === 0) {
+      return;
+    }
+
+    const conflictMessages = conflicts.map(conflict =>
+      conflict.field === 'cpf'
+        ? 'Já existe um eleitor com este CPF.'
+        : 'Já existe um eleitor com este título de eleitor.'
+    );
+
+    throw new AppError('CONFLICT', 409, conflictMessages.join(' '), { conflicts });
+  }
+
+  async getEleitoresPage(scope: SessionScope, params: EleitorQueryParams): Promise<PaginatedEleitoresResult> {
+    return this.adapter.queryEleitores(scope, params);
+  }
+
+  async getEleitores(scope: SessionScope, caboEleitoralId?: string): Promise<Eleitor[]> {
+    const eleitores = await this.adapter.listEleitores(scope, caboEleitoralId);
     return [...eleitores].sort(
       (current, next) => new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime()
     );
   }
 
-  // Busca eleitor específico respeitando escopo por usuário.
-  async getEleitorById(userId: string, id: string): Promise<Eleitor | null> {
-    return this.adapter.findEleitorById(userId, id);
+  async getEleitorById(scope: SessionScope, id: string): Promise<Eleitor | null> {
+    return this.adapter.findEleitorById(scope, id);
   }
 
-  // Cria eleitor vinculado ao usuário autenticado.
-  async createEleitor(userId: string, data: CreateEleitorInput): Promise<Eleitor> {
-    return this.adapter.createEleitor(userId, data);
+  async validateUniqueFields(data: EleitorUniqueCheckInput): Promise<{
+    cpfAvailable: boolean;
+    tituloEleitorAvailable: boolean;
+    conflicts: EleitorUniqueConflict[];
+  }> {
+    const conflicts = await this.adapter.findEleitorUniqueConflicts({
+      cpf: normalizeDigits(data.cpf),
+      tituloEleitor: normalizeDigits(data.tituloEleitor),
+      excludeId: data.excludeId,
+    });
+
+    return {
+      cpfAvailable: !conflicts.some(conflict => conflict.field === 'cpf'),
+      tituloEleitorAvailable: !conflicts.some(conflict => conflict.field === 'tituloEleitor'),
+      conflicts,
+    };
   }
 
-  // Atualiza eleitor do usuário autenticado.
-  async updateEleitor(userId: string, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
-    return this.adapter.updateEleitor(userId, id, data);
+  async createEleitor(scope: SessionScope, data: CreateEleitorInput): Promise<Eleitor> {
+    const sanitized = this.sanitizeEleitorInput(data);
+    await this.ensureUniqueEleitorData(sanitized);
+    return this.adapter.createEleitor(scope, sanitized);
   }
 
-  // Remove eleitor do usuário autenticado.
-  async deleteEleitor(userId: string, id: string): Promise<void> {
-    await this.adapter.deleteEleitor(userId, id);
+  async updateEleitor(scope: SessionScope, id: string, data: UpdateEleitorInput): Promise<Eleitor> {
+    const sanitized = this.sanitizeEleitorInput(data);
+    await this.ensureUniqueEleitorData(sanitized, id);
+    return this.adapter.updateEleitor(scope, id, sanitized);
+  }
+
+  async deleteEleitor(scope: SessionScope, id: string): Promise<void> {
+    await this.adapter.deleteEleitor(scope, id);
   }
 }
 
-// =========================
-// Serviço de dashboard
-// =========================
 export class DashboardService {
   constructor(private readonly eleitorService: EleitorService) {}
 
-  // Calcula variação percentual entre período atual e anterior.
   private calculateVariation(current: number, previous: number): number {
     if (previous === 0) {
       return current === 0 ? 0 : 100;
@@ -92,56 +227,39 @@ export class DashboardService {
     return Number(variation.toFixed(1));
   }
 
-  // Consolida os indicadores exibidos no dashboard do usuário autenticado.
-  async getDashboardStats(userId: string): Promise<DashboardStats> {
-    // Base principal de dados do usuário.
-    const allEleitores = await this.eleitorService.getEleitores(userId);
-
-    // Particionamento de promessas para indicadores e gráficos.
+  async getDashboardStats(scope: SessionScope): Promise<DashboardStats> {
+    const allEleitores = await this.eleitorService.getEleitores(scope);
     const eleitoresComPromessa = allEleitores.filter(eleitor => eleitor.promessa);
     const promessasConcluidas = eleitoresComPromessa.filter(eleitor => eleitor.promessaConcluida);
     const promessasPendentes = eleitoresComPromessa.filter(eleitor => !eleitor.promessaConcluida);
 
-    // Último eleitor adicionado (para card de destaque).
     const sortedEleitores = [...allEleitores].sort(
       (current, next) => new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime()
     );
 
-    // Série anual de cadastros por mês.
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const eleitoresPorMes = months.map((month, monthIndex) => ({
       mes: month,
       total: allEleitores.filter(eleitor => new Date(eleitor.createdAt).getMonth() === monthIndex).length,
     }));
 
-    // Referência temporal para comparar mês atual vs mês anterior.
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const previousMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    // Helper interno para contar registros por ano/mês.
-    const countByMonth = <T extends { createdAt: string | Date }>(
-      items: T[],
-      year: number,
-      month: number,
-    ): number =>
+    const countByMonth = <T extends { createdAt: string | Date }>(items: T[], year: number, month: number): number =>
       items.filter(item => {
         const createdAt = new Date(item.createdAt);
         return createdAt.getFullYear() === year && createdAt.getMonth() === month;
       }).length;
 
-    // Quantidade de novos eleitores no mês atual e anterior.
     const totalCurrentMonth = countByMonth(allEleitores, currentYear, currentMonth);
     const totalPreviousMonth = countByMonth(allEleitores, previousMonthYear, previousMonth);
-
-    // Quantidade de promessas concluídas no mês atual e anterior.
     const promessasConcluidasCurrentMonth = countByMonth(promessasConcluidas, currentYear, currentMonth);
-
     const promessasConcluidasPreviousMonth = countByMonth(promessasConcluidas, previousMonthYear, previousMonth);
 
-    // Ranking de zonas por volume de eleitores.
     const zonasCount: Record<string, number> = {};
     allEleitores.forEach(eleitor => {
       if (eleitor.zona) {
@@ -154,7 +272,6 @@ export class DashboardService {
       .sort((current, next) => next.total - current.total)
       .slice(0, 5);
 
-    // Payload final que abastece os cards e gráficos do dashboard.
     return {
       totalEleitores: allEleitores.length,
       totalEleitoresVariacao: this.calculateVariation(totalCurrentMonth, totalPreviousMonth),
@@ -173,21 +290,16 @@ export class DashboardService {
   }
 }
 
-// =========================
-// Serviço de usuário
-// =========================
 export class UserService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
-  // Atualiza dados de perfil do usuário.
-  async updateUserProfile(id: string, data: Partial<User>): Promise<User> {
-    const updatedUser = await this.adapter.updateUser(id, data);
+  async updateUserProfile(role: AuthRole, id: string, data: Partial<AuthUser>): Promise<AuthUser> {
+    const updatedUser = await this.adapter.updateAuthUser(role, id, data);
     return withoutPassword(updatedUser);
   }
 
-  // Atualiza senha com validação da senha atual.
-  async updateUserSenha(id: string, senhaAtual: string, novaSenha: string): Promise<void> {
-    const user = await this.adapter.findUserById(id);
+  async updateUserSenha(role: AuthRole, id: string, senhaAtual: string, novaSenha: string): Promise<void> {
+    const user = await this.adapter.findAuthUserById(role, id);
     if (!user) {
       throw new AppError('NOT_FOUND', 404, 'Usuário não encontrado.');
     }
@@ -196,6 +308,6 @@ export class UserService {
       throw new AppError('UNAUTHORIZED', 401, 'Senha atual incorreta.');
     }
 
-    await this.adapter.updateUser(id, { senha: novaSenha });
+    await this.adapter.updateAuthUser(role, id, { senha: novaSenha });
   }
 }

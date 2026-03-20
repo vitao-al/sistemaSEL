@@ -61,7 +61,7 @@ function PerfilContent() {
     setProfileLoading(true);
     setProfileMsg(null);
     try {
-      const updated = await updateUserProfile(user.id, data);
+      const updated = await updateUserProfile(user.id, user.role, data);
       // Mantém o store local sincronizado com a versão persistida no backend.
       updateUser(updated);
       setProfileMsg({ type: 'success', text: 'Perfil atualizado com sucesso!' });
@@ -78,7 +78,7 @@ function PerfilContent() {
     setSenhaLoading(true);
     setSenhaMsg(null);
     try {
-      await updateUserSenha(user.id, data.senhaAtual, data.novaSenha);
+      await updateUserSenha(user.id, user.role, data.senhaAtual, data.novaSenha);
       setSenhaMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
       // Evita manter valores sensíveis no formulário após atualização.
       senhaForm.reset();
