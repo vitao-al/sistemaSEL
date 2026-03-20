@@ -13,19 +13,19 @@
   --brand-primary-light: #FED7AA;
   --brand-primary-dark: #C2410C;
   --brand-primary-subtle: #FFF7ED;
-  --brand-secondary: #1E293B;
+  --brand-secondary: #C2410C;
   --brand-accent: #0EA5E9;
 
   /* Surfaces */
   --surface-bg: #F8FAFC;
   --surface-card: #FFFFFF;
   --surface-elevated: #FFFFFF;
-  --surface-sidebar: #1E293B;
-  --surface-sidebar-active: #334155;
+  --surface-sidebar: #E70030;
+  --surface-sidebar-active: #C2410C;
 
   /* Text */
   --text-primary: #0F172A;
-  --text-secondary: #475569;
+  --text-secondary: white;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
   --text-sidebar: #CBD5E1;
