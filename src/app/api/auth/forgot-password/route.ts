@@ -10,12 +10,28 @@ import { AppError, buildErrorResponse } from '@/lib/errors';
 // Schema da entrada do fluxo de recuperação.
 const forgotSchema = z.object({ email: z.string().email('Email inválido.') });
 
+function getRequestBaseUrl(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
+
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  if (request.nextUrl?.origin) {
+    return request.nextUrl.origin;
+  }
+
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const input = forgotSchema.parse(body);
     const { authService } = createServerServices();
-    await authService.forgotPassword(input.email);
+    const baseUrl = getRequestBaseUrl(request);
+    await authService.forgotPassword(input.email, baseUrl);
     // Sempre retorna sucesso — não revela se o email está cadastrado.
     return NextResponse.json(
       { success: true, data: { message: 'Se o email estiver cadastrado, você receberá as instruções em breve.' } },

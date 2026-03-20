@@ -31,11 +31,16 @@ function normalizeOptionalText(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export class AuthService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
   async login(email: string, senha: string): Promise<{ user: AuthUser; token: string }> {
-    const foundUser = await this.adapter.findAuthUserByCredentials(email, senha);
+    const normalizedEmail = normalizeEmail(email);
+    const foundUser = await this.adapter.findAuthUserByCredentials(normalizedEmail, senha);
     if (!foundUser) {
       throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
     }
@@ -58,12 +63,13 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(email: string): Promise<void> {
-    const foundUser = await this.adapter.findAuthUserByEmail(email);
+  async forgotPassword(email: string, baseUrl?: string): Promise<void> {
+    const normalizedEmail = normalizeEmail(email);
+    const foundUser = await this.adapter.findAuthUserByEmail(normalizedEmail);
     if (!foundUser) {
       // Não revela se o email existe: apenas silencia sem erro visível ao cliente.
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[auth] forgot-password ignorado: email não encontrado (${email}).`);
+        console.log(`[auth] forgot-password ignorado: email não encontrado (${normalizedEmail}).`);
       }
       return;
     }
@@ -79,8 +85,8 @@ export class AuthService {
     await this.adapter.deleteExpiredPasswordResetTokens();
     await this.adapter.createPasswordResetToken(foundUser.email, foundUser.role, token, expiresAt);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-    const resetUrl = `${baseUrl}/redefinir-senha/${token}`;
+    const appBaseUrl = (baseUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const resetUrl = `${appBaseUrl}/redefinir-senha/${token}`;
 
     await sendPasswordResetEmail({
       to: foundUser.email,
