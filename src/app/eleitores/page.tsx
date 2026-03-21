@@ -521,9 +521,7 @@ function EleitoresContent() {
       {/* Tabela principal de eleitores com estados de loading/empty/lista */}
       <div className={s.tableCard}>
         <div className={s.tableHeader}>
-          <span className={s.tableTitle}>
-            {eleitoresTitle} <span className={s.tableCount}>({totalEleitores} encontrados)</span>
-          </span>
+          <span className={s.tableTitle}>{totalEleitores} encontrados</span>
         </div>
 
         {loading ? (
