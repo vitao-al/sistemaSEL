@@ -29,6 +29,7 @@ A comprehensive web application for electoral campaign management featuring a hi
 ![Zustand](https://img.shields.io/badge/Zustand-111111?style=for-the-badge&logo=react&logoColor=white)
 ![Zod](https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
+![Resend](https://img.shields.io/badge/Resend-000000?style=for-the-badge&logo=resend&logoColor=white)
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 
 ## Visão geral
@@ -48,6 +49,7 @@ A comprehensive web application for electoral campaign management featuring a hi
 | Estado e formulários | Zustand, React Hook Form, Zod |
 | Visualização | Recharts, Lucide React |
 | Exportação | jsPDF, jspdf-autotable |
+| Mensageria | Resend, Nodemailer |
 | Autenticação | jsonwebtoken (HS256 JWT) |
 | Backend (API) | Route Handlers do Next.js (App Router) |
 | Persistência | Prisma ORM + PostgreSQL (Neon) |
