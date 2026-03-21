@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './ThemeSwitcher.module.css';
-import { Sun } from 'lucide-react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
 
