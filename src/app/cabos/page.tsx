@@ -10,6 +10,7 @@ import Layout from '@/components/layout/Layout';
 import { Button, ConfirmDialog, EmptyState, Modal, ToastProvider, useToast } from '@/components/ui';
 import { CaboEleitoral } from '@/types';
 import { createCabo, deleteCabo, getCabos, getCabosReport, updateCabo } from '@/lib/data';
+import { useAuthStore } from '@/store/auth';
 import s from './cabos.module.css';
 
 const formSchema = z.object({
@@ -389,6 +390,7 @@ async function buildStyledPdf(report: ReportData) {
 function CabosContent() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthStore();
   const [cabos, setCabos] = useState<CaboEleitoral[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -402,6 +404,7 @@ function CabosContent() {
   const [reportLoading, setReportLoading] = useState(false);
 
   const form = useForm<CaboForm>({ resolver: zodResolver(formSchema) });
+  const isAdmin = user?.role === 'admin';
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
@@ -502,9 +505,11 @@ function CabosContent() {
         </div>
 
         <div className={s.actions}>
-          <Button variant="secondary" icon={<Download size={15} />} onClick={() => setReportOpen(true)}>
-            Download relatório
-          </Button>
+          {isAdmin && (
+            <Button variant="secondary" icon={<Download size={15} />} onClick={() => setReportOpen(true)}>
+              Download relatório
+            </Button>
+          )}
           <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
             Novo Cabo
           </Button>
