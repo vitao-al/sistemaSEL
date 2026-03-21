@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './ThemeSwitcher.module.css';
+import { Sun } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -47,7 +48,7 @@ export default function ThemeSwitcher() {
         title="Tema claro"
         aria-label="Tema claro"
       >
-        ☀️
+        <Sun size={15} />
       </button>
       <button
         className={`${styles.themeBtn} ${theme === 'dark' ? styles.active : ''}`}
@@ -55,7 +56,7 @@ export default function ThemeSwitcher() {
         title="Tema escuro"
         aria-label="Tema escuro"
       >
-        🌙
+        <Moon size={15} />
       </button>
       <button
         className={`${styles.themeBtn} ${theme === 'system' ? styles.active : ''}`}
@@ -63,7 +64,7 @@ export default function ThemeSwitcher() {
         title="Automático"
         aria-label="Tema automático"
       >
-        ⚙️
+        <Monitor size={15} />
       </button>
     </div>
   );
