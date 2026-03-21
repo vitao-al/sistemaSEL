@@ -11,9 +11,14 @@ export default function RootPage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const hasHydrated = useAuthStore(s => s.hasHydrated);
+  const initialize = useAuthStore(s => s.initialize);
 
   useEffect(() => {
-    // Evita redirecionamento prematuro enquanto o Zustand ainda não recuperou dados do storage.
+    void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    // Evita redirecionamento prematuro enquanto a sessão em cookie ainda está sendo consultada.
     if (!hasHydrated) return;
 
     if (isAuthenticated) {

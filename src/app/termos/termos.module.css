@@ -1,0 +1,147 @@
+.page {
+  min-height: 100vh;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  padding: 48px 20px 80px;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--brand-secondary), #7c0019);
+  color: white;
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: var(--shadow-lg);
+}
+
+.heroTitle {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.heroText {
+  max-width: 760px;
+  line-height: 1.75;
+  color: rgba(255,255,255,0.92);
+}
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 14px;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.text {
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.list {
+  margin-left: 20px;
+  display: grid;
+  gap: 10px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--border-default);
+}
+
+.table th,
+.table td {
+  padding: 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-default);
+  vertical-align: top;
+}
+
+.table th {
+  background: var(--brand-primary-subtle);
+  color: var(--text-primary);
+}
+
+.table td {
+  color: var(--text-secondary);
+}
+
+.backLink {
+  color: var(--brand-secondary);
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 28px 14px 56px;
+  }
+
+  .container {
+    gap: 18px;
+  }
+
+  .hero {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .heroText,
+  .text,
+  .list {
+    line-height: 1.65;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px;
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .heroTitle {
+    font-size: 1.55rem;
+  }
+
+  .sectionTitle {
+    font-size: 1rem;
+  }
+
+  .heroText,
+  .text,
+  .list,
+  .backLink {
+    font-size: 0.94rem;
+  }
+}

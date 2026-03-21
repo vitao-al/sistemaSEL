@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { buildErrorResponse, AppError } from '@/lib/errors';
+import { setAuthCookie } from '@/lib/auth/session';
 
 // Schema de entrada para login.
 // Aqui garantimos que os campos mínimos foram enviados antes de chegar na regra de negócio.
@@ -23,8 +24,10 @@ export async function POST(request: NextRequest) {
     const { authService } = createServerServices();
     const result = await authService.login(input.email, input.senha);
 
-    // 3) Retorna envelope padrão da API.
-    return NextResponse.json({ success: true, data: result }, { status: 200 });
+    // 3) Persiste a sessão em cookie HttpOnly e devolve apenas o perfil seguro.
+    const response = NextResponse.json({ success: true, data: { user: result.user } }, { status: 200 });
+    setAuthCookie(response, result.token);
+    return response;
   } catch (error) {
     // Erros de validação (400) ficam explícitos para o frontend.
     if (error instanceof z.ZodError) {

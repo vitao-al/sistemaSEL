@@ -75,6 +75,7 @@ export interface AuthState {
   isLoading: boolean;
   expiresAt?: number | null;
   hasHydrated: boolean;
+  initialize: () => Promise<void>;
   setHasHydrated: (value: boolean) => void;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;

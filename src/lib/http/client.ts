@@ -1,5 +1,5 @@
 // Cliente HTTP padrão do frontend para consumo das rotas internas da API.
-// Centraliza envelope de resposta, erro tipado e injeção de token Bearer.
+// Centraliza envelope de resposta, erro tipado e envio automático de cookies da sessão.
 
 type ApiErrorPayload = {
   code?: string;
@@ -26,42 +26,20 @@ export class HttpClientError extends Error {
   }
 }
 
-// Recupera o token persistido do auth store (zustand persist).
-// Esse token é anexado automaticamente no header Authorization.
-function getAuthTokenFromStorage(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const rawPersistedState = window.localStorage.getItem('voter-auth');
-    if (!rawPersistedState) return null;
-
-    const parsed = JSON.parse(rawPersistedState) as {
-      state?: { token?: string | null };
-      token?: string | null;
-    };
-
-    return parsed.state?.token ?? parsed.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // Helper único para chamadas HTTP da aplicação.
 // Regras principais:
 // 1) Sempre enviar JSON.
-// 2) Incluir token Bearer quando existir.
+// 2) Enviar cookies da sessão automaticamente.
 // 3) Tratar envelope de erro padrão da API.
 export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const authToken = getAuthTokenFromStorage();
-
   const response = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(init?.headers ?? {}),
     },
     cache: 'no-store',
+    credentials: 'include',
   });
 
   let payload: ApiEnvelope<T> | null = null;

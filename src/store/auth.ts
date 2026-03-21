@@ -1,69 +1,54 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { AuthState } from '@/types';
-import { authLogin } from '@/lib/data';
+import { authGetSession, authLogin, authLogout } from '@/lib/data';
 
-// Store central de autenticação com persistência no localStorage.
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-      expiresAt: null,
-      hasHydrated: false,
+// Store central de autenticação baseada em cookie HttpOnly.
+// O frontend mantém apenas o perfil em memória; o token nunca fica exposto ao JavaScript.
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  isLoading: false,
+  expiresAt: null,
+  hasHydrated: false,
 
-      // Sinaliza quando o estado persistido já foi restaurado no cliente.
-      setHasHydrated: (value) => {
-        set({ hasHydrated: value });
-      },
+  initialize: async () => {
+    if (get().hasHydrated || get().isLoading) return;
 
-      login: async (email, senha) => {
-        set({ isLoading: true });
-        try {
-          const { user, token } = await authLogin(email, senha);
-          const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 dias
-          set({ user, token, isAuthenticated: true, isLoading: false, expiresAt });
-        } catch (err) {
-          set({ isLoading: false });
-          throw err;
-        }
-      },
-
-      // Limpa sessão local (token, usuário e data de expiração).
-      logout: () => {
-        set({ user: null, token: null, isAuthenticated: false, expiresAt: null });
-      },
-
-      // Atualização parcial do perfil no store sem perder campos atuais.
-      updateUser: (data) => {
-        const current = get().user;
-        if (!current) return;
-        set({ user: { ...current, ...data } });
-      },
-    }),
-    {
-      name: 'voter-auth',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-        expiresAt: state.expiresAt,
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-
-        // Segurança extra: descarta sessão persistida se já estiver vencida.
-        if (state.expiresAt && Date.now() > state.expiresAt) {
-          state.logout();
-        }
-
-        state.setHasHydrated(true);
-      },
+    set({ isLoading: true });
+    try {
+      const { user } = await authGetSession();
+      set({ user, isAuthenticated: true, isLoading: false, hasHydrated: true });
+    } catch {
+      set({ user: null, token: null, isAuthenticated: false, expiresAt: null, isLoading: false, hasHydrated: true });
     }
-  )
-);
+  },
+
+  setHasHydrated: (value) => {
+    set({ hasHydrated: value });
+  },
+
+  login: async (email, senha) => {
+    set({ isLoading: true });
+    try {
+      const { user } = await authLogin(email, senha);
+      set({ user, token: null, isAuthenticated: true, isLoading: false, hasHydrated: true });
+    } catch (err) {
+      set({ isLoading: false, hasHydrated: true });
+      throw err;
+    }
+  },
+
+  logout: () => {
+    void authLogout();
+    set({ user: null, token: null, isAuthenticated: false, expiresAt: null, hasHydrated: true });
+  },
+
+  updateUser: (data) => {
+    const current = get().user;
+    if (!current) return;
+    set({ user: { ...current, ...data } });
+  },
+}));

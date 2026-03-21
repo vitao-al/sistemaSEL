@@ -30,10 +30,27 @@ export type CaboListQuery = {
   perPage: number;
 };
 
-export async function authLogin(email: string, senha: string): Promise<{ user: AuthUser; token: string }> {
+export async function authLogin(email: string, senha: string): Promise<{ user: AuthUser }> {
   return httpRequest('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, senha }),
+  });
+}
+
+export async function authGetSession(): Promise<{ user: AuthUser }> {
+  return httpRequest('/api/auth/session');
+}
+
+export async function authLogout(): Promise<void> {
+  await httpRequest('/api/auth/logout', {
+    method: 'POST',
+  });
+}
+
+export async function authAcceptCompliance(preferences: boolean): Promise<void> {
+  await httpRequest('/api/auth/consent', {
+    method: 'POST',
+    body: JSON.stringify({ preferences }),
   });
 }
 

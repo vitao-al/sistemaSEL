@@ -32,7 +32,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading, isAuthenticated, hasHydrated } = useAuthStore();
+  const { login, isLoading, isAuthenticated, hasHydrated, initialize } = useAuthStore();
   const [showSenha, setShowSenha] = useState(false);
   const [globalError, setGlobalError] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -49,7 +49,11 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Se o usuário já estiver autenticado, não faz sentido permanecer na tela de login.
+    void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    // Se o usuário já estiver autenticado via cookie de sessão, não faz sentido permanecer na tela de login.
     if (!hasHydrated) return;
     if (isAuthenticated) {
       router.replace('/dashboard');
@@ -209,6 +213,11 @@ export default function LoginPage() {
               <button type="submit" className={s.submitBtn} disabled={isLoading}>
                 {isLoading ? <span className={s.spinner} /> : 'Entrar'}
               </button>
+
+              <p style={{ marginTop: 14, fontSize: 13, lineHeight: 1.6, color: 'var(--text-muted)' }}>
+                Ao acessar o painel, será exibido um termo obrigatório de uso e cookies essenciais para a segurança da sessão.
+                Leia também os <Link href="/termos" style={{ color: 'var(--brand-secondary)', fontWeight: 700 }}>Termos de Uso e Política de Cookies</Link>.
+              </p>
             </form>
           ) : (
             <form className={s.form} onSubmit={registerForm.handleSubmit(onRegister)}>

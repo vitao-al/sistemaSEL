@@ -1,12 +1,22 @@
 'use client';
 
-// Controle de tema local (claro, escuro e automático), persistido no localStorage.
+// Controle de tema local (claro, escuro e automático), persistido em cookie apenas se o usuário aceitar cookies de preferência.
 
 import { useEffect, useState } from 'react';
 import styles from './ThemeSwitcher.module.css';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import {
+  CONSENT_COOKIE_NAME,
+  THEME_COOKIE_MAX_AGE_SECONDS,
+  THEME_COOKIE_NAME,
+  ThemePreference,
+  deleteBrowserCookie,
+  parseConsentCookie,
+  readBrowserCookie,
+  writeBrowserCookie,
+} from '@/lib/cookies';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = ThemePreference;
 
 export default function ThemeSwitcher() {
   const [theme, setTheme] = useState<Theme>('system');
@@ -14,8 +24,8 @@ export default function ThemeSwitcher() {
 
   useEffect(() => {
     setMounted(true);
-    // Recupera preferência salva e sincroniza com o atributo data-theme do documento.
-    const saved = localStorage.getItem('theme') as Theme || 'system';
+    // Recupera preferência salva em cookie e sincroniza com o atributo data-theme do documento.
+    const saved = (readBrowserCookie(THEME_COOKIE_NAME) as Theme | null) ?? 'system';
     setTheme(saved);
     applyTheme(saved);
   }, []);
@@ -32,9 +42,14 @@ export default function ThemeSwitcher() {
   };
 
   const handleThemeChange = (newTheme: Theme) => {
-    // Atualiza UI, persiste escolha e aplica imediatamente.
+    // Atualiza UI e só persiste em cookie se o usuário aceitou cookies de preferência.
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    const consent = parseConsentCookie(readBrowserCookie(CONSENT_COOKIE_NAME));
+    if (consent?.preferences) {
+      writeBrowserCookie(THEME_COOKIE_NAME, newTheme, THEME_COOKIE_MAX_AGE_SECONDS);
+    } else {
+      deleteBrowserCookie(THEME_COOKIE_NAME);
+    }
     applyTheme(newTheme);
   };
 

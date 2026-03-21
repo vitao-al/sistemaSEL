@@ -353,6 +353,11 @@ export class DashboardService {
 export class UserService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
+  async getCurrentUser(role: AuthRole, id: string): Promise<AuthUser | null> {
+    const user = await this.adapter.findAuthUserById(role, id);
+    return user ? withoutPassword(user) : null;
+  }
+
   async updateUserProfile(role: AuthRole, id: string, data: Partial<AuthUser>): Promise<AuthUser> {
     const updatedUser = await this.adapter.updateAuthUser(role, id, data);
     return withoutPassword(updatedUser);

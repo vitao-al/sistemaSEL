@@ -10,6 +10,8 @@ import {
 import { useAuthStore } from '@/store/auth';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
+import ConsentPanel from '@/components/compliance/ConsentPanel';
+import { THEME_COOKIE_NAME, readBrowserCookie, ThemePreference } from '@/lib/cookies';
 import s from './Layout.module.css';
 
 interface LayoutProps {
@@ -41,12 +43,16 @@ function getInitials(name: string) {
 export default function Layout({ children, title, breadcrumb }: LayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, isAuthenticated, expiresAt, hasHydrated } = useAuthStore();
+  const { user, logout, isAuthenticated, hasHydrated, initialize } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Aplica o tema persistido assim que o shell monta.
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' || 'system';
+    void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    // Aplica o tema persistido em cookie assim que o shell monta.
+    const savedTheme = (readBrowserCookie(THEME_COOKIE_NAME) as ThemePreference | null) ?? 'system';
     const root = document.documentElement;
     
     if (savedTheme === 'system') {
@@ -60,17 +66,10 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
   useEffect(() => {
     if (!hasHydrated) return;
 
-    // Token vencido: invalida sessão local imediatamente.
-    if (user && expiresAt && Date.now() > expiresAt) {
-      logout();
-      router.replace('/login');
-      return;
-    }
-
     if (!isAuthenticated || !user) {
       router.replace('/login');
     }
-  }, [hasHydrated, user, expiresAt, isAuthenticated, logout, router]);
+  }, [hasHydrated, user, isAuthenticated, router]);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -159,6 +158,7 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
           {children}
         </main>
       </div>
+      <ConsentPanel />
     </div>
   );
 }

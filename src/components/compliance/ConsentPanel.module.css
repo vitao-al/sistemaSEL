@@ -1,0 +1,152 @@
+.content {
+  display: grid;
+  gap: 18px;
+}
+
+.intro {
+  display: grid;
+  gap: 10px;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--surface-card);
+  display: grid;
+  gap: 10px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cardMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.switchActive {
+  background: var(--brand-primary);
+}
+
+.switchHandle {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: var(--transition-fast);
+}
+
+.switchActive .switchHandle {
+  transform: translateX(20px);
+}
+
+.bulletList {
+  margin-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.notice {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--brand-primary-subtle);
+  border: 1px solid var(--brand-primary-light);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.link {
+  color: var(--brand-secondary);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 14px;
+  }
+
+  .cardHeader,
+  .switchRow,
+  .footer,
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .switchRow {
+    gap: 10px;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+
+  .link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .bulletList {
+    margin-left: 16px;
+  }
+}
