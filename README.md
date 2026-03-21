@@ -1,6 +1,23 @@
 # SistemaSEL
 
-Aplicação web para gestão de campanhas eleitorais, com hierarquia **Admin → Cabo Eleitoral → Eleitor**, autenticação JWT, dashboard analítico, relatórios exportáveis (PDF/XLS/CSV) e interface responsiva mobile-first. Construída com Next.js 14 App Router, TypeScript, Prisma e PostgreSQL (Neon).
+Aplicação web para gestão de campanhas eleitorais, com hierarquia **Admin → Cabo Eleitoral → Eleitor**, autenticação JWT, dashboard analítico e relatórios exportáveis.
+
+---
+
+### Posicionamento Ético e Objetivo do Projeto (Compliance & LGPD)
+
+Este projeto foi desenvolvido com foco estrito na **transparência e na proteção de dados pessoais**, seguindo os princípios da **Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018)**. 
+
+Diferente de sistemas de monitoramento informais, o **SistemaSEL** foi arquitetado como uma ferramenta de **logística e eficiência democrática**:
+
+* **Finalidade do Tratamento:** Os dados são coletados exclusivamente para fins de organização de campanha e comunicação direta autorizada, substituindo o uso de planilhas inseguras e descentralizadas.
+* **Privacy by Design:** O sistema implementa validações rigorosas de unicidade (CPF e Título Eleitoral) e controle de acesso baseado em funções (RBAC). Um cabo eleitoral só acessa seus próprios registros, garantindo o princípio do privilégio mínimo.
+* **Segurança da Informação:** Utilização de JWT assinado (HS256) e hashing para proteção de credenciais.
+* **Objetivo Profissional:** Este sistema visa resolver um desafio clássico de engenharia de software — a gestão de grandes volumes de dados sensíveis sob alta demanda — demonstrando competência técnica em segurança, modelagem de dados e arquitetura de sistemas.
+
+## Overview (English)
+
+A comprehensive web application for electoral campaign management featuring a hierarchical role system, analytic dashboards, and multi-format report exportation (PDF/XLS/CSV). Built with **Next.js 14 (App Router)**, **TypeScript**, **Prisma**, and **PostgreSQL**.
 
 ## Tecnologias
 
