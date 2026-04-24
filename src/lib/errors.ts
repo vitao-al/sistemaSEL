@@ -2,6 +2,7 @@
 // Centraliza códigos, status e formato de resposta de falha.
 
 import { NextResponse } from 'next/server';
+import { getLogger } from '@/lib/infrastructure/logging/get-logger';
 
 type ErrorCode =
   | 'VALIDATION_ERROR'
@@ -10,7 +11,8 @@ type ErrorCode =
   | 'FORBIDDEN'
   | 'CONFLICT'
   | 'DATABASE_ERROR'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'RATE_LIMIT_EXCEEDED';
 
 export class AppError extends Error {
   constructor(
@@ -22,6 +24,14 @@ export class AppError extends Error {
     super(message);
     this.name = 'AppError';
   }
+}
+
+/** Evita poluir logs em `next build` com erros esperados de rotas dinâmicas. */
+function shouldLogServerError(appError: AppError): boolean {
+  const msg = appError.message;
+  if (msg.includes('Dynamic server usage')) return false;
+  if (msg.includes("couldn't be rendered statically")) return false;
+  return true;
 }
 
 export function toAppError(error: unknown, fallbackMessage = 'Erro interno do servidor.'): AppError {
@@ -38,6 +48,15 @@ export function toAppError(error: unknown, fallbackMessage = 'Erro interno do se
 
 export function buildErrorResponse(error: unknown, fallbackMessage?: string) {
   const appError = toAppError(error, fallbackMessage);
+
+  if (appError.status >= 500 && shouldLogServerError(appError)) {
+    const log = getLogger().child({ layer: 'http' });
+    log.error('request_failed', {
+      code: appError.code,
+      status: appError.status,
+      message: appError.message,
+    });
+  }
 
   return NextResponse.json(
     {

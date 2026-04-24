@@ -14,6 +14,8 @@ import { ptBR } from 'date-fns/locale';
 import Layout from '@/components/layout/Layout';
 import { Button, Badge, Modal, ConfirmDialog, EmptyState, ToastProvider, useToast } from '@/components/ui';
 import { getEleitores, createEleitor, updateEleitor, deleteEleitor, getCabos, validateEleitorUnique } from '@/lib/data';
+import { SYNC_KEYS } from '@/lib/sync/data-sync';
+import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { CaboEleitoral, Eleitor } from '@/types';
 import { useAuthStore } from '@/store/auth';
 import s from './eleitores.module.css';
@@ -397,6 +399,8 @@ function EleitoresContent() {
   }, [search, filterZona, filterPromessa, sortField, sortDir, page, filterCabo, user?.role]);
 
   useEffect(() => { load(); }, [load]);
+
+  useRefetchOnSyncInvalidate(load, [SYNC_KEYS.eleitores]);
 
   useEffect(() => {
     if (user?.role !== 'admin') return;

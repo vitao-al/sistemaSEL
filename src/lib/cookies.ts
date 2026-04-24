@@ -11,6 +11,16 @@ export const THEME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 export const TERMS_VERSION = '2026-03-20';
 export const COOKIE_POLICY_VERSION = '2026-03-20';
 
+/** Chave de sessionStorage para lembrar aceite imediato após POST (evita modal reabrindo antes do cookie propagar). */
+export function getConsentSessionStorageKey(): string {
+  return `sistema_sel_consent_ack_${TERMS_VERSION}`;
+}
+
+/** Chave de localStorage para persistir aceite de consentimento neste dispositivo por versão de termos/política. */
+export function getConsentLocalStorageKey(): string {
+  return `sistema_sel_consent_local_ack_${TERMS_VERSION}_${COOKIE_POLICY_VERSION}`;
+}
+
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 export type ConsentCookiePayload = {
@@ -31,8 +41,18 @@ export function serializeConsentCookie(payload: ConsentCookiePayload) {
 export function parseConsentCookie(value?: string | null): ConsentCookiePayload | null {
   if (!value) return null;
 
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let jsonText: string;
   try {
-    const parsed = JSON.parse(decodeURIComponent(value)) as Partial<ConsentCookiePayload>;
+    jsonText = decodeURIComponent(trimmed);
+  } catch {
+    jsonText = trimmed;
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText) as Partial<ConsentCookiePayload>;
 
     if (
       typeof parsed.version !== 'string' ||

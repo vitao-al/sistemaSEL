@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { buildErrorResponse, AppError } from '@/lib/errors';
 import { setAuthCookie } from '@/lib/auth/session';
+import { getLoginRateLimitPolicy } from '@/lib/config/security-policies';
+import { enforceRateLimit } from '@/lib/http/rate-limit-guard';
 
 // Schema de entrada para login.
 // Aqui garantimos que os campos mínimos foram enviados antes de chegar na regra de negócio.
@@ -16,6 +18,14 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const policy = getLoginRateLimitPolicy();
+    const limited = enforceRateLimit(request, {
+      scope: 'auth-login',
+      max: policy.max,
+      windowMs: policy.windowMs,
+    });
+    if (limited) return limited;
+
     // 1) Lê e valida o body da requisição.
     const body = await request.json();
     const input = loginSchema.parse(body);

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -10,9 +9,9 @@ import { Users, CheckCircle2, Clock, UserPlus, TrendingUp, Plus, CalendarClock, 
 import Layout from '@/components/layout/Layout';
 import { StatCard, ChartCard, Skeleton } from '@/components/ui';
 import { getDashboardStats } from '@/lib/data';
-import { HttpClientError } from '@/lib/http/client';
+import { SYNC_KEYS } from '@/lib/sync/data-sync';
+import { useLiveQuery } from '@/lib/sync/use-live-query';
 import { useAuthStore } from '@/store/auth';
-import { DashboardStats } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import s from './dashboard.module.css';
@@ -41,55 +40,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function DashboardPage() {
   const router = useRouter();
   const { logout, user } = useAuthStore();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadStats = async () => {
-      try {
-        const data = await getDashboardStats();
-        if (!mounted) return;
-        setStats(data);
-        setError(null);
-      } catch (requestError) {
-        if (!mounted) return;
-
-        // Sessão expirada: força limpeza local e volta para login.
-        if (requestError instanceof HttpClientError && requestError.status === 401) {
-          logout();
-          router.replace('/login');
-          return;
-        }
-
-        const message = requestError instanceof Error
-          ? requestError.message
-          : 'Falha ao carregar os dados do dashboard.';
-        setError(message);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    loadStats();
-
-    // Mantém dashboard atualizado sem exigir refresh manual.
-    const intervalId = window.setInterval(loadStats, 30000);
-    // Ao voltar para a aba, recarrega os números para reduzir chance de dado stale.
-    const onFocus = () => {
-      loadStats();
-    };
-
-    window.addEventListener('focus', onFocus);
-
-    return () => {
-      mounted = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, []);
+  const { data: stats, loading, error } = useLiveQuery(SYNC_KEYS.dashboardStats, getDashboardStats, {
+    refreshMs: 90_000,
+    onUnauthorized: () => {
+      logout();
+      router.replace('/login');
+    },
+  });
 
   if (loading) {
     return (

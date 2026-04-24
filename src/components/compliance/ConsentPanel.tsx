@@ -6,12 +6,17 @@ import { useRouter } from 'next/navigation';
 import { Button, Modal } from '@/components/ui';
 import { authAcceptCompliance } from '@/lib/data';
 import {
+  getConsentLocalStorageKey,
+  CONSENT_COOKIE_MAX_AGE_SECONDS,
   CONSENT_COOKIE_NAME,
+  getConsentSessionStorageKey,
   THEME_COOKIE_NAME,
   deleteBrowserCookie,
   isConsentCurrent,
   parseConsentCookie,
   readBrowserCookie,
+  serializeConsentCookie,
+  writeBrowserCookie,
 } from '@/lib/cookies';
 import { useAuthStore } from '@/store/auth';
 import s from './ConsentPanel.module.css';
@@ -27,7 +32,22 @@ export default function ConsentPanel() {
     if (!hasHydrated || !user) return;
 
     const consent = parseConsentCookie(readBrowserCookie(CONSENT_COOKIE_NAME));
-    setOpen(!isConsentCurrent(consent, user.id));
+    const sessionAck = typeof sessionStorage !== 'undefined'
+      && sessionStorage.getItem(getConsentSessionStorageKey()) === user.id;
+    const localAck = typeof localStorage !== 'undefined'
+      && localStorage.getItem(getConsentLocalStorageKey()) === user.id;
+    const cookieOk = isConsentCurrent(consent, user.id);
+
+    if (cookieOk) {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(getConsentSessionStorageKey(), user.id);
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(getConsentLocalStorageKey(), user.id);
+      }
+    }
+
+    setOpen(!(cookieOk || sessionAck || localAck));
     setPreferencesCookies(consent?.preferences ?? true);
   }, [hasHydrated, user]);
 
@@ -37,9 +57,13 @@ export default function ConsentPanel() {
   }, [user]);
 
   const handleAccept = async () => {
+    if (!user) return;
     setSaving(true);
     try {
-      await authAcceptCompliance(preferencesCookies);
+      const payload = await authAcceptCompliance(preferencesCookies);
+      writeBrowserCookie(CONSENT_COOKIE_NAME, serializeConsentCookie(payload), CONSENT_COOKIE_MAX_AGE_SECONDS);
+      sessionStorage.setItem(getConsentSessionStorageKey(), user.id);
+      localStorage.setItem(getConsentLocalStorageKey(), user.id);
       if (!preferencesCookies) {
         deleteBrowserCookie(THEME_COOKIE_NAME);
       }
@@ -66,7 +90,7 @@ export default function ConsentPanel() {
           </Link>
           <div className={s.actions}>
             <Button variant="secondary" onClick={handleExit}>Sair do painel</Button>
-            <Button variant="primary" onClick={() => void handleAccept()} loading={saving}>
+            <Button variant="primary" respectGlobalCooldown={false} onClick={() => void handleAccept()} loading={saving}>
               Aceitar e continuar
             </Button>
           </div>

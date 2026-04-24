@@ -2,6 +2,7 @@
 
 import { useEffect, useState, createContext, useContext } from 'react';
 import { ArrowUpRight, TrendingUp, TrendingDown, X, Trash2, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { useMutationBarrier } from '@/lib/http/use-mutation-barrier';
 import s from './ui.module.css';
 
 // Card de KPI usado no dashboard para números resumidos e variação percentual.
@@ -85,14 +86,31 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   loading?: boolean;
   icon?: React.ReactNode;
+  /** Desabilita enquanto mutações estão na fila ou em espera de 10s (primary/danger por padrão). */
+  respectGlobalCooldown?: boolean;
 }
-export function Button({ children, variant = 'primary', size = 'md', loading, icon, className, ...props }: ButtonProps) {
+export function Button({
+  children,
+  variant = 'primary',
+  size = 'md',
+  loading,
+  icon,
+  className,
+  respectGlobalCooldown,
+  ...props
+}: ButtonProps) {
+  const mutationBlocked = useMutationBarrier();
+  const useCooldown = respectGlobalCooldown ?? (variant === 'primary' || variant === 'danger');
   const variantClass = {
     primary: s.btnPrimary, secondary: s.btnSecondary, danger: s.btnDanger, ghost: s.btnGhost,
   }[variant];
   const sizeClass = { sm: s.btnSm, md: s.btnMd, lg: s.btnLg }[size];
   return (
-    <button className={`${s.btn} ${variantClass} ${sizeClass} ${className ?? ''}`} disabled={loading || props.disabled} {...props}>
+    <button
+      className={`${s.btn} ${variantClass} ${sizeClass} ${className ?? ''}`}
+      disabled={loading || props.disabled || (useCooldown && mutationBlocked)}
+      {...props}
+    >
       {loading ? <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> : icon}
       {children}
     </button>

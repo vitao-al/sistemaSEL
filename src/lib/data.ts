@@ -1,6 +1,7 @@
 // Camada de acesso a dados no client.
 
 import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor } from '@/types';
+import type { ConsentCookiePayload } from './cookies';
 import { httpRequest } from './http/client';
 import {
   CaboPayload,
@@ -47,8 +48,8 @@ export async function authLogout(): Promise<void> {
   });
 }
 
-export async function authAcceptCompliance(preferences: boolean): Promise<void> {
-  await httpRequest('/api/auth/consent', {
+export async function authAcceptCompliance(preferences: boolean): Promise<ConsentCookiePayload> {
+  return httpRequest<ConsentCookiePayload>('/api/auth/consent', {
     method: 'POST',
     body: JSON.stringify({ preferences }),
   });

@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { AuthState } from '@/types';
+import { getConsentSessionStorageKey } from '@/lib/cookies';
 import { authGetSession, authLogin, authLogout } from '@/lib/data';
 
 // Store central de autenticação baseada em cookie HttpOnly.
@@ -43,6 +44,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   logout: () => {
     void authLogout();
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(getConsentSessionStorageKey());
+    }
     set({ user: null, token: null, isAuthenticated: false, expiresAt: null, hasHydrated: true });
   },
 

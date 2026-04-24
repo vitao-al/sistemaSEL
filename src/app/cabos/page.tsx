@@ -10,6 +10,8 @@ import Layout from '@/components/layout/Layout';
 import { Button, ConfirmDialog, EmptyState, Modal, ToastProvider, useToast } from '@/components/ui';
 import { CaboEleitoral } from '@/types';
 import { createCabo, deleteCabo, getCabos, getCabosReport, updateCabo } from '@/lib/data';
+import { SYNC_KEYS } from '@/lib/sync/data-sync';
+import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { useAuthStore } from '@/store/auth';
 import s from './cabos.module.css';
 
@@ -420,6 +422,9 @@ function CabosContent() {
   }, [search, page]);
 
   useEffect(() => { load(); }, [load]);
+
+  useRefetchOnSyncInvalidate(load, [SYNC_KEYS.cabos]);
+
   useEffect(() => { setPage(1); }, [search]);
 
   const openCreate = () => {

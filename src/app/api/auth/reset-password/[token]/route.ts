@@ -6,12 +6,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { getResetPasswordRateLimitPolicy } from '@/lib/config/security-policies';
+import { enforceRateLimit } from '@/lib/http/rate-limit-guard';
 
 type RouteParams = { params: { token: string } };
 
 /** Valida o token e retorna quanto tempo resta (em segundos). */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const policy = getResetPasswordRateLimitPolicy();
+    const limited = enforceRateLimit(request, {
+      scope: 'auth-reset-password-get',
+      max: policy.max,
+      windowMs: policy.windowMs,
+    });
+    if (limited) return limited;
+
     const { token } = params;
     if (!token) {
       return buildErrorResponse(new AppError('VALIDATION_ERROR', 400, 'Token não informado.'));
@@ -41,6 +51,14 @@ const resetSchema = z.object({
 /** Redefine a senha com o token fornecido. */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const policy = getResetPasswordRateLimitPolicy();
+    const limited = enforceRateLimit(request, {
+      scope: 'auth-reset-password-post',
+      max: policy.max,
+      windowMs: policy.windowMs,
+    });
+    if (limited) return limited;
+
     const { token } = params;
     if (!token) {
       return buildErrorResponse(new AppError('VALIDATION_ERROR', 400, 'Token não informado.'));
