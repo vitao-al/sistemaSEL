@@ -32,3 +32,4 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 node_modules
+.agents
