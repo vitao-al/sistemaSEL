@@ -25,6 +25,7 @@ const eleitorSchema = z.object({
   nome: z.string().optional(),
   cpf: z.string().optional(),
   tituloEleitor: z.string().optional(),
+  telefone: z.string().optional(),
   sessao: z.string().optional(),
   zona: z.string().optional(),
   localVotacao: z.string().optional(),
@@ -55,6 +56,14 @@ function formatTituloEleitor(value?: string) {
     .replace(/(\d{4})(\d)/, '$1 $2');
 }
 
+function formatTelefone(value?: string) {
+  const digits = onlyDigits(value)?.slice(0, 11) ?? '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
 function normalizeOptionalText(value?: string) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
@@ -68,6 +77,7 @@ function sanitizeEleitorForm(data: EleitorForm): EleitorForm {
     nome: normalizeOptionalText(data.nome),
     cpf: normalizeOptionalText(onlyDigits(data.cpf)),
     tituloEleitor: normalizeOptionalText(onlyDigits(data.tituloEleitor)),
+    telefone: normalizeOptionalText(onlyDigits(data.telefone)),
     sessao: normalizeOptionalText(data.sessao),
     zona: normalizeOptionalText(data.zona),
     localVotacao: normalizeOptionalText(data.localVotacao),
@@ -159,6 +169,7 @@ function EleitorFormModal({
         nome: initial.nome,
         cpf: initial.cpf,
         tituloEleitor: initial.tituloEleitor,
+        telefone: initial.telefone,
         sessao: initial.sessao,
         zona: initial.zona,
         localVotacao: initial.localVotacao,
@@ -244,6 +255,20 @@ function EleitorFormModal({
         </div>
 
         <div className={s.formField}>
+          <label className={s.formLabel}>Telefone</label>
+          <input
+            {...register('telefone', {
+              onChange: event => {
+                event.target.value = formatTelefone(event.target.value);
+              },
+            })}
+            className={s.formInput}
+            placeholder="(11) 99999-9999"
+            inputMode="tel"
+          />
+        </div>
+
+        <div className={s.formField}>
           <label className={s.formLabel}>Sessão</label>
           <input {...register('sessao')} className={s.formInput} placeholder="0001" />
         </div>
@@ -290,10 +315,12 @@ function EleitorViewModal({ open, onClose, eleitor }: { open: boolean; onClose: 
     { label: 'Nome', value: eleitor.nome },
     { label: 'CPF', value: eleitor.cpf },
     { label: 'Título de Eleitor', value: eleitor.tituloEleitor },
+    { label: 'Telefone', value: eleitor.telefone },
     { label: 'Sessão', value: eleitor.sessao },
     { label: 'Zona', value: eleitor.zona },
     { label: 'Local de Votação', value: eleitor.localVotacao },
   ];
+  const caboVinculado = eleitor.caboEleitoral ? `${eleitor.caboEleitoral.nome} • Zona ${eleitor.caboEleitoral.zona}` : 'Não informado';
   return (
     <Modal open={open} onClose={onClose} title="Detalhes do Eleitor" footer={<Button variant="secondary" onClick={onClose}>Fechar</Button>}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
@@ -314,6 +341,10 @@ function EleitorViewModal({ open, onClose, eleitor }: { open: boolean; onClose: 
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{f.value}</div>
           </div>
         ))}
+        <div style={{ gridColumn: '1 / -1', background: 'var(--surface-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Cabo eleitoral vinculado</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{caboVinculado}</div>
+        </div>
         {eleitor.localVotacao && (
           <div style={{ gridColumn: '1 / -1', background: 'var(--surface-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Local de Votação</div>

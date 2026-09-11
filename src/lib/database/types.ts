@@ -28,6 +28,7 @@ export interface EleitorPayload {
   nome?: string;
   cpf?: string;
   tituloEleitor?: string;
+  telefone?: string;
   sessao?: string;
   zona?: string;
   localVotacao?: string;
@@ -44,6 +45,7 @@ export interface CaboPayload {
   titulo: string;
   zona: string;
   email: string;
+  telefone?: string;
   senha: string;
 }
 

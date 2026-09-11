@@ -45,6 +45,7 @@ function mapCabo(record: {
   titulo: string;
   zona: string;
   email: string;
+  telefone: string | null;
   avatar: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +58,7 @@ function mapCabo(record: {
     titulo: record.titulo,
     zona: record.zona,
     email: record.email,
+    telefone: record.telefone ?? undefined,
     avatar: record.avatar ?? undefined,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
@@ -70,6 +72,7 @@ function mapEleitor(record: {
   nome: string | null;
   cpf: string | null;
   tituloEleitor: string | null;
+  telefone: string | null;
   sessao: string | null;
   zona: string | null;
   localVotacao: string | null;
@@ -91,6 +94,7 @@ function mapEleitor(record: {
     nome: record.nome ?? undefined,
     cpf: record.cpf ?? undefined,
     tituloEleitor: record.tituloEleitor ?? undefined,
+    telefone: record.telefone ?? undefined,
     sessao: record.sessao ?? undefined,
     zona: record.zona ?? undefined,
     localVotacao: record.localVotacao ?? undefined,
@@ -354,6 +358,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
           titulo: data.titulo,
           zona: data.zona,
           email: data.email,
+          telefone: data.telefone,
           senha: data.senha,
         },
       });
@@ -373,6 +378,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
           titulo: data.titulo,
           zona: data.zona,
           email: data.email,
+          telefone: data.telefone,
           senha: data.senha,
         },
       });
@@ -535,6 +541,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         nome: data.nome,
         cpf: data.cpf,
         tituloEleitor: data.tituloEleitor,
+        telefone: data.telefone,
         sessao: data.sessao,
         zona: data.zona,
         localVotacao: data.localVotacao,
@@ -573,6 +580,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         nome: data.nome,
         cpf: data.cpf,
         tituloEleitor: data.tituloEleitor,
+        telefone: data.telefone,
         sessao: data.sessao,
         zona: data.zona,
         localVotacao: data.localVotacao,

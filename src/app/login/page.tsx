@@ -94,7 +94,7 @@ export default function LoginPage() {
 
   return (
     <div className={s.page}>
-      {/* Painel institucional com proposta de valor do produto */}
+      
       <div className={s.panel}>
         <div className={s.panelBg} />
         <div className={s.panelDecor} />

@@ -18,6 +18,7 @@ export interface CaboEleitoral {
   titulo: string;
   zona: string;
   email: string;
+  telefone?: string;
   avatar?: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +42,7 @@ export interface Eleitor {
   nome?: string;
   cpf?: string;
   tituloEleitor?: string;
+  telefone?: string;
   sessao?: string;
   zona?: string;
   localVotacao?: string;

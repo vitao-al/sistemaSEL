@@ -10,6 +10,7 @@ import Layout from '@/components/layout/Layout';
 import { Button, ConfirmDialog, EmptyState, Modal, ToastProvider, useToast } from '@/components/ui';
 import { CaboEleitoral } from '@/types';
 import { createCabo, deleteCabo, getCabos, getCabosReport, updateCabo } from '@/lib/data';
+import { sortEleitoresAlfabeticos } from '@/lib/reporting';
 import { SYNC_KEYS } from '@/lib/sync/data-sync';
 import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { useAuthStore } from '@/store/auth';
@@ -20,6 +21,7 @@ const formSchema = z.object({
   titulo: z.string().min(1, 'Título obrigatório'),
   zona: z.string().min(1, 'Zona obrigatória'),
   email: z.string().email('Email inválido'),
+  telefone: z.string().optional(),
   senha: z.string().min(6, 'Mínimo de 6 caracteres'),
 });
 
@@ -82,7 +84,9 @@ function escapeCsv(value: unknown) {
 function flattenReportRows(report: ReportData) {
   return report.admins.flatMap(({ admin, cabos }) =>
     cabos.flatMap(({ cabo, eleitores }) => {
-      if (eleitores.length === 0) {
+      const sortedEleitores = sortEleitoresAlfabeticos(eleitores);
+
+      if (sortedEleitores.length === 0) {
         return [[
           admin.nome,
           cabo.nome,
@@ -94,10 +98,11 @@ function flattenReportRows(report: ReportData) {
           '-',
           '-',
           '-',
+          '-',
         ]];
       }
 
-      return eleitores.map(eleitor => [
+      return sortedEleitores.map(eleitor => [
         admin.nome,
         cabo.nome,
         cabo.titulo,
@@ -106,6 +111,7 @@ function flattenReportRows(report: ReportData) {
         eleitor.nome ?? '-',
         eleitor.cpf ?? '-',
         eleitor.tituloEleitor ?? '-',
+        eleitor.telefone ?? '-',
         eleitor.localVotacao ?? '-',
         new Date(eleitor.createdAt).toLocaleString('pt-BR'),
       ]);
@@ -127,7 +133,7 @@ function buildExcelContent(report: ReportData) {
         <table border="1">
           <tr>
             <th>Admin</th><th>Cabo</th><th>Título Cabo</th><th>Zona Cabo</th><th>Email Cabo</th>
-            <th>Eleitor</th><th>CPF</th><th>Título Eleitor</th><th>Local Votação</th><th>Cadastro</th>
+            <th>Eleitor</th><th>CPF</th><th>Título Eleitor</th><th>Telefone</th><th>Local Votação</th><th>Cadastro</th>
           </tr>
           ${tableRows}
         </table>
@@ -146,6 +152,7 @@ function buildCsvContent(report: ReportData) {
     'Eleitor',
     'CPF',
     'Título Eleitor',
+    'Telefone',
     'Local Votação',
     'Cadastro',
   ];
@@ -335,7 +342,9 @@ async function buildStyledPdf(report: ReportData) {
 
       cursorY += 10;
 
-      if (eleitores.length === 0) {
+      const sortedEleitores = sortEleitoresAlfabeticos(eleitores);
+
+      if (sortedEleitores.length === 0) {
         doc.setTextColor(100, 116, 139);
         doc.setFont('helvetica', 'italic');
         doc.setFontSize(8);
@@ -346,13 +355,14 @@ async function buildStyledPdf(report: ReportData) {
 
       autoTable(doc, {
         startY: cursorY,
-        head: [['Nome', 'CPF', 'Título', 'Zona', 'Sessão', 'Local', 'Status']],
-        body: eleitores.map(eleitor => [
+        head: [['Nome', 'CPF', 'Título', 'Zona', 'Sessão', 'Telefone', 'Local', 'Status']],
+        body: sortedEleitores.map(eleitor => [
           eleitor.nome ?? '-',
           eleitor.cpf ?? '-',
           eleitor.tituloEleitor ?? '-',
           eleitor.zona ?? '-',
           eleitor.sessao ?? '-',
+          eleitor.telefone ?? '-',
           toShortName(eleitor.localVotacao ?? '-', 24),
           eleitor.promessa ? (eleitor.promessaConcluida ? 'Concluída' : 'Pendente') : 'Sem promessa',
         ]),
@@ -429,13 +439,13 @@ function CabosContent() {
 
   const openCreate = () => {
     setEditItem(null);
-    form.reset({ nome: '', titulo: '', zona: '', email: '', senha: '' });
+    form.reset({ nome: '', titulo: '', zona: '', email: '', telefone: '', senha: '' });
     setOpenForm(true);
   };
 
   const openEdit = (item: CaboEleitoral) => {
     setEditItem(item);
-    form.reset({ nome: item.nome, titulo: item.titulo, zona: item.zona, email: item.email, senha: '' });
+    form.reset({ nome: item.nome, titulo: item.titulo, zona: item.zona, email: item.email, telefone: item.telefone ?? '', senha: '' });
     setOpenForm(true);
   };
 
@@ -582,6 +592,8 @@ function CabosContent() {
           <input className={s.input} {...form.register('zona')} />
           <label className={s.label}>Email</label>
           <input className={s.input} {...form.register('email')} />
+          <label className={s.label}>Telefone</label>
+          <input className={s.input} {...form.register('telefone')} placeholder="(11) 99999-9999" />
           <label className={s.label}>Senha</label>
           <input className={s.input} type="password" {...form.register('senha')} />
         </div>

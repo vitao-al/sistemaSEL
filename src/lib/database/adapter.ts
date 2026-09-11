@@ -42,6 +42,7 @@ const DEFAULT_CABOS: (CaboEleitoral & { senha: string })[] = [
     titulo: '111122223333',
     zona: '01',
     email: 'cabo1@sistemasel.com',
+    telefone: '(11) 99999-0000',
     senha: '123456',
     createdAt: '2026-03-15T10:00:00Z',
     updatedAt: '2026-03-15T10:00:00Z',
@@ -249,6 +250,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       titulo: data.titulo,
       zona: data.zona,
       email: data.email,
+      telefone: data.telefone,
       senha: data.senha,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -263,7 +265,12 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     const cabos = this.readCabos();
     const index = cabos.findIndex(item => item.id === id);
     if (index === -1) throw new Error('Cabo não encontrado.');
-    cabos[index] = { ...cabos[index], ...data, updatedAt: new Date().toISOString() };
+    cabos[index] = {
+      ...cabos[index],
+      ...data,
+      telefone: data.telefone ?? cabos[index].telefone,
+      updatedAt: new Date().toISOString(),
+    };
     this.writeCabos(cabos);
     const { senha: _senha, ...safe } = cabos[index];
     return safe;
@@ -373,6 +380,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       nome: data.nome,
       cpf: data.cpf,
       tituloEleitor: data.tituloEleitor,
+      telefone: data.telefone,
       sessao: data.sessao,
       zona: data.zona,
       localVotacao: data.localVotacao,
@@ -401,6 +409,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     eleitores[index] = {
       ...eleitores[index],
       ...data,
+      telefone: data.telefone ?? eleitores[index].telefone,
       caboEleitoralId: targetCaboId,
       updatedAt: new Date().toISOString(),
     };
