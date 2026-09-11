@@ -1,6 +1,6 @@
 // Camada de acesso a dados no client.
 
-import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor } from '@/types';
+import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor, Familia, FamiliaMembro } from '@/types';
 import type { ConsentCookiePayload } from './cookies';
 import { httpRequest } from './http/client';
 import {
@@ -195,6 +195,43 @@ export async function updateEleitor(id: string, data: Partial<EleitorPayload>): 
 
 export async function deleteEleitor(id: string): Promise<void> {
   await httpRequest(`/api/eleitores/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getFamilias(): Promise<Familia[]> {
+  return httpRequest('/api/familias');
+}
+
+export async function createFamilia(data: { nome?: string; caboEleitoralId?: string }): Promise<Familia> {
+  return httpRequest('/api/familias', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFamilia(id: string, data: { nome?: string }): Promise<Familia> {
+  return httpRequest(`/api/familias/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFamilia(id: string): Promise<void> {
+  await httpRequest(`/api/familias/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function addFamiliaMembro(familiaId: string, data: { eleitorId: string; grauParentesco: string }): Promise<FamiliaMembro> {
+  return httpRequest(`/api/familias/${familiaId}/membros`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFamiliaMembro(familiaId: string, membroId: string): Promise<void> {
+  await httpRequest(`/api/familias/${familiaId}/membros/${membroId}`, {
     method: 'DELETE',
   });
 }

@@ -53,6 +53,26 @@ export interface Eleitor {
   caboEleitoral?: Pick<CaboEleitoral, 'id' | 'nome' | 'titulo' | 'zona' | 'adminId'>;
 }
 
+export interface FamiliaMembro {
+  id: string;
+  familiaId: string;
+  eleitorId: string;
+  grauParentesco: string;
+  createdAt: string;
+  updatedAt: string;
+  eleitor?: Pick<Eleitor, 'id' | 'nome' | 'cpf' | 'tituloEleitor' | 'zona'>;
+}
+
+export interface Familia {
+  id: string;
+  caboEleitoralId: string;
+  nome?: string;
+  createdAt: string;
+  updatedAt: string;
+  caboEleitoral?: Pick<CaboEleitoral, 'id' | 'nome' | 'zona'>;
+  membros?: FamiliaMembro[];
+}
+
 export interface DashboardStats {
   totalEleitores: number;
   totalEleitoresVariacao: number;
@@ -75,6 +95,7 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitializing: boolean;
   expiresAt?: number | null;
   hasHydrated: boolean;
   initialize: () => Promise<void>;

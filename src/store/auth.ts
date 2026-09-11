@@ -12,18 +12,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   token: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitializing: false,
   expiresAt: null,
   hasHydrated: false,
 
   initialize: async () => {
-    if (get().hasHydrated || get().isLoading) return;
+    if (get().hasHydrated || get().isLoading || get().isInitializing) return;
 
-    set({ isLoading: true });
+    set({ isInitializing: true, isLoading: true });
     try {
       const { user } = await authGetSession();
-      set({ user, isAuthenticated: true, isLoading: false, hasHydrated: true });
+      set({ user, isAuthenticated: true, isLoading: false, isInitializing: false, hasHydrated: true });
     } catch {
-      set({ user: null, token: null, isAuthenticated: false, expiresAt: null, isLoading: false, hasHydrated: true });
+      set({ user: null, token: null, isAuthenticated: false, expiresAt: null, isLoading: false, isInitializing: false, hasHydrated: true });
     }
   },
 

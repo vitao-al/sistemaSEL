@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -25,6 +25,7 @@ function getNavItems(role: 'admin' | 'cabo') {
     return [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { href: '/cabos', icon: Users, label: 'Cabos Eleitorais' },
+      { href: '/familias', icon: Users, label: 'FAMILIAS' },
       { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
     ];
   }
@@ -32,6 +33,7 @@ function getNavItems(role: 'admin' | 'cabo') {
   return [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/eleitores', icon: Users, label: 'Eleitores' },
+    { href: '/familias', icon: Users, label: 'FAMILIAS' },
     { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
   ];
 }
@@ -45,8 +47,11 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
   const router = useRouter();
   const { user, logout, isAuthenticated, hasHydrated, initialize } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     void initialize();
   }, [initialize]);
 

@@ -3,7 +3,7 @@
 // Página de entrada do sistema.
 // Após a hidratação do estado persistido, redireciona para login ou dashboard.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 
@@ -12,8 +12,11 @@ export default function RootPage() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const hasHydrated = useAuthStore(s => s.hasHydrated);
   const initialize = useAuthStore(s => s.initialize);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     void initialize();
   }, [initialize]);
 
