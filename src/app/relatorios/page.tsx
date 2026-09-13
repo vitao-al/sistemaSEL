@@ -447,8 +447,17 @@ async function buildPdf(report: ReportData, type: ReportType) {
       },
       didParseCell: (data) => {
         // ensure header-like rows (our block headers) use bold text and full-width
-        if (data.row.raw && Array.isArray(data.row.raw) && data.row.raw.length === 1 && data.row.raw[0]?.colSpan) {
-          data.cell.styles.fontStyle = 'bold';
+        // `data.row.raw` can contain primitives or CellDef objects; guard safely
+        try {
+          const raw = data.row.raw;
+          if (Array.isArray(raw) && raw.length === 1) {
+            const first: any = raw[0];
+            if (first && typeof first === 'object' && 'colSpan' in first) {
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        } catch {
+          // ignore type guard errors at runtime
         }
       },
     });
