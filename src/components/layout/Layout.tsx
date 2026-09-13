@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, UserCircle, Vote,
-  LogOut, Menu, X
+  LogOut, Menu, X, BarChart3
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import UserAvatar from '@/components/ui/UserAvatar';
@@ -26,6 +26,7 @@ function getNavItems(role: 'admin' | 'cabo') {
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { href: '/cabos', icon: Users, label: 'Cabos Eleitorais' },
       { href: '/familias', icon: Users, label: 'FAMILIAS' },
+      { href: '/relatorios', icon: BarChart3, label: 'Relatórios' },
       { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
     ];
   }
@@ -34,6 +35,7 @@ function getNavItems(role: 'admin' | 'cabo') {
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/eleitores', icon: Users, label: 'Eleitores' },
     { href: '/familias', icon: Users, label: 'FAMILIAS' },
+    { href: '/relatorios', icon: BarChart3, label: 'Relatórios' },
     { href: '/perfil', icon: UserCircle, label: 'Meu Perfil' },
   ];
 }
