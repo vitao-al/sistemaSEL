@@ -10,6 +10,8 @@ import {
 import { useAuthStore } from '@/store/auth';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
+import OfflineBanner from '@/components/ui/network';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import ConsentPanel from '@/components/compliance/ConsentPanel';
 import { THEME_COOKIE_NAME, readBrowserCookie, ThemePreference } from '@/lib/cookies';
 import s from './Layout.module.css';
@@ -24,6 +26,7 @@ function getNavItems(role: 'admin' | 'cabo') {
   if (role === 'admin') {
     return [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { href: '/lideres', icon: Users, label: 'Líder' },
       { href: '/cabos', icon: Users, label: 'Cabos Eleitorais' },
       { href: '/familias', icon: Users, label: 'FAMILIAS' },
       { href: '/relatorios', icon: BarChart3, label: 'Relatórios' },
@@ -162,7 +165,10 @@ export default function Layout({ children, title, breadcrumb }: LayoutProps) {
         </header>
 
         <main className={s.content}>
-          {children}
+          <ErrorBoundary>
+            <OfflineBanner onRetry={() => { /* noop: banner triggers its own check */ }} />
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
       <ConsentPanel />

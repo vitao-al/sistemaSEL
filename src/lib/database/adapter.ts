@@ -1,4 +1,4 @@
-import { Admin, CaboEleitoral, Eleitor } from '@/types';
+import { Admin, CaboEleitoral, Eleitor, Lider } from '@/types';
 import {
   AuthUserWithPassword,
   CaboQueryParams,
@@ -20,6 +20,7 @@ import { AppError } from '@/lib/errors';
 
 const STORAGE_KEY_ADMINS = 'voterapp-admins';
 const STORAGE_KEY_CABOS = 'voterapp-cabos';
+const STORAGE_KEY_LIDERES = 'voterapp-lideres';
 const STORAGE_KEY_ELEITORES = 'voterapp-eleitores';
 
 const DEFAULT_ADMINS: (Admin & { senha: string })[] = [
@@ -49,11 +50,26 @@ const DEFAULT_CABOS: (CaboEleitoral & { senha: string })[] = [
   },
 ];
 
+const DEFAULT_LIDERES: Lider[] = [
+  {
+    id: 'lider-1',
+    adminId: 'admin-1',
+    nome: 'Mariana Silva',
+    email: 'lider1@sistemasel.com',
+    telefone: '(11) 98888-1111',
+    cargo: 'Coordenadora regional',
+    cor: '#3b82f6',
+    createdAt: '2026-03-15T10:00:00Z',
+    updatedAt: '2026-03-15T10:00:00Z',
+  },
+];
+
 const DEFAULT_ELEITORES: Eleitor[] = [];
 
 export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   private adminsFallback = [...DEFAULT_ADMINS];
   private cabosFallback = [...DEFAULT_CABOS];
+  private lideresFallback = [...DEFAULT_LIDERES];
   private eleitoresFallback = [...DEFAULT_ELEITORES];
 
   private isBrowser(): boolean {
@@ -96,6 +112,25 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       return;
     }
     localStorage.setItem(STORAGE_KEY_CABOS, JSON.stringify(items));
+  }
+
+  private readLideres(): Lider[] {
+    if (!this.isBrowser()) return [...this.lideresFallback];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_LIDERES);
+      if (!raw) return [...DEFAULT_LIDERES];
+      return JSON.parse(raw);
+    } catch {
+      return [...DEFAULT_LIDERES];
+    }
+  }
+
+  private writeLideres(items: Lider[]): void {
+    if (!this.isBrowser()) {
+      this.lideresFallback = [...items];
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY_LIDERES, JSON.stringify(items));
   }
 
   private readEleitores(): Eleitor[] {
@@ -214,10 +249,79 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     return this.readAdmins().map(({ senha: _senha, ...item }) => item);
   }
 
+  async listLideres(adminId: string, params: { search?: string; page: number; perPage: number }): Promise<{ items: Lider[]; total: number; page: number; perPage: number }> {
+    const search = (params.search || '').toLowerCase();
+    const all = this.readLideres()
+      .filter(item => item.adminId === adminId)
+      .filter(item => !search || item.nome.toLowerCase().includes(search))
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+
+    const page = Math.max(1, params.page);
+    const perPage = Math.max(1, params.perPage);
+    const start = (page - 1) * perPage;
+
+    return {
+      items: all.slice(start, start + perPage),
+      total: all.length,
+      page,
+      perPage,
+    };
+  }
+
+  async findLiderById(id: string): Promise<Lider | null> {
+    return this.readLideres().find(item => item.id === id) ?? null;
+  }
+
+  async createLider(adminId: string, data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
+    const lideres = this.readLideres();
+    const item: Lider = {
+      id: `lider-${Date.now()}`,
+      adminId,
+      nome: data.nome,
+      email: data.email,
+      telefone: data.telefone,
+      cargo: data.cargo,
+      avatar: data.avatar,
+      cor: data.cor,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    lideres.unshift(item);
+    this.writeLideres(lideres);
+    return item;
+  }
+
+  async updateLider(id: string, data: { nome?: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
+    const lideres = this.readLideres();
+    const index = lideres.findIndex(item => item.id === id);
+    if (index === -1) throw new Error('Liderança não encontrada.');
+    lideres[index] = {
+      ...lideres[index],
+      ...data,
+      telefone: data.telefone ?? lideres[index].telefone,
+      cargo: data.cargo ?? lideres[index].cargo,
+      avatar: data.avatar ?? lideres[index].avatar,
+      cor: data.cor ?? lideres[index].cor,
+      updatedAt: new Date().toISOString(),
+    };
+    this.writeLideres(lideres);
+    return lideres[index];
+  }
+
+  async deleteLider(id: string): Promise<void> {
+    const lideres = this.readLideres();
+    this.writeLideres(lideres.filter(item => item.id !== id));
+
+    const cabos = this.readCabos();
+    const updatedCabos = cabos.map(item => item.liderId === id ? { ...item, liderId: undefined } : item);
+    this.writeCabos(updatedCabos);
+  }
+
   async listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult> {
     const search = (params.search || '').toLowerCase();
     const all = this.readCabos()
       .filter(item => item.adminId === adminId)
+      .filter(item => params.liderId ? item.liderId === params.liderId : item.liderId == null)
       .filter(item => !search || [item.nome, item.titulo, item.zona, item.email].join(' ').toLowerCase().includes(search))
       .map(({ senha: _senha, ...item }) => item)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -246,6 +350,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     const item = {
       id: `cabo-${Date.now()}`,
       adminId,
+      liderId: data.liderId,
       nome: data.nome,
       titulo: data.titulo,
       zona: data.zona,
@@ -268,6 +373,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     cabos[index] = {
       ...cabos[index],
       ...data,
+      liderId: data.liderId ?? cabos[index].liderId,
       telefone: data.telefone ?? cabos[index].telefone,
       updatedAt: new Date().toISOString(),
     };
@@ -513,6 +619,38 @@ class ResilientDatabaseAdapter implements DatabaseAdapter {
 
   listAdmins(): Promise<Admin[]> {
     return this.executeWithFallback('listAdmins', () => this.primary.listAdmins(), () => this.fallback.listAdmins());
+  }
+
+  listLideres(adminId: string, params: { search?: string; page: number; perPage: number }): Promise<{ items: Lider[]; total: number; page: number; perPage: number }> {
+    return this.executeWithFallback(
+      'listLideres',
+      () => this.primary.listLideres(adminId, params),
+      () => this.fallback.listLideres(adminId, params)
+    );
+  }
+
+  findLiderById(id: string): Promise<Lider | null> {
+    return this.executeWithFallback('findLiderById', () => this.primary.findLiderById(id), () => this.fallback.findLiderById(id));
+  }
+
+  createLider(adminId: string, data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
+    return this.executeWithFallback(
+      'createLider',
+      () => this.primary.createLider(adminId, data),
+      () => this.fallback.createLider(adminId, data)
+    );
+  }
+
+  updateLider(id: string, data: { nome?: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
+    return this.executeWithFallback(
+      'updateLider',
+      () => this.primary.updateLider(id, data),
+      () => this.fallback.updateLider(id, data)
+    );
+  }
+
+  deleteLider(id: string): Promise<void> {
+    return this.executeWithFallback('deleteLider', () => this.primary.deleteLider(id), () => this.fallback.deleteLider(id));
   }
 
   listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult> {

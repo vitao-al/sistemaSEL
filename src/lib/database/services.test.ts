@@ -33,6 +33,23 @@ describe('AuthService', () => {
     const service = new AuthService(createMockDatabaseAdapter());
     await expect(service.login('invalido@mail.com', '123')).rejects.toThrow('Email ou senha inválidos.');
   });
+
+  it('rejeita login de cabo mesmo quando o usuário existir no adaptador', async () => {
+    const cabo = mockAuthUser({
+      id: 'cabo-1',
+      email: 'cabo@teste.com',
+      senha: '123456',
+      role: 'cabo',
+      adminId: 'admin-1',
+    });
+
+    const adapter = createMockDatabaseAdapter({
+      findAuthUserByCredentials: async (_email, _senha) => cabo,
+    });
+
+    const service = new AuthService(adapter);
+    await expect(service.login('cabo@teste.com', '123456')).rejects.toThrow('Email ou senha inválidos.');
+  });
 });
 
 describe('UserService', () => {

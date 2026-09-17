@@ -14,6 +14,7 @@ import {
   getFamilias,
   updateFamilia,
 } from '@/lib/data';
+import RetryNotice from '@/components/ui/RetryNotice';
 import { sortFamiliasPorNome } from '@/lib/familias';
 import { useAuthStore } from '@/store/auth';
 import type { CaboEleitoral, Eleitor, Familia } from '@/types';
@@ -376,12 +377,9 @@ function FamiliasContent() {
       {loading ? (
         <div className={s.loading}>Carregando famílias...</div>
       ) : dataError ? (
-        <EmptyState
-          icon={<Users size={28} />}
-          title="Não foi possível carregar as famílias"
-          description={dataError}
-          action={<Button variant="primary" onClick={() => void loadData()}>Tentar novamente</Button>}
-        />
+        <div style={{ padding: 18 }}>
+          <RetryNotice message={dataError} onRetry={loadData} />
+        </div>
       ) : filteredFamilias.length === 0 ? (
         <EmptyState
           icon={<Users size={28} />}

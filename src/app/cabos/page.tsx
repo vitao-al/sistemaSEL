@@ -1,15 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Search, Plus, Users, Trash2, Edit2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button, ConfirmDialog, EmptyState, Modal, ToastProvider, useToast } from '@/components/ui';
-import { CaboEleitoral } from '@/types';
-import { createCabo, deleteCabo, getCabos, updateCabo } from '@/lib/data';
+import { CaboEleitoral, Lider } from '@/types';
+import RetryNotice from '@/components/ui/RetryNotice';
+import { createCabo, deleteCabo, getCabos, getLideres, updateCabo } from '@/lib/data';
 import { SYNC_KEYS } from '@/lib/sync/data-sync';
 import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { useAuthStore } from '@/store/auth';
@@ -21,7 +22,7 @@ const formSchema = z.object({
   zona: z.string().min(1, 'Zona obrigatória'),
   email: z.string().email('Email inválido'),
   telefone: z.string().optional(),
-  senha: z.string().min(6, 'Mínimo de 6 caracteres'),
+  liderId: z.string().optional(),
 });
 
 type CaboForm = z.infer<typeof formSchema>;
@@ -29,58 +30,115 @@ const PER_PAGE = 9;
 
 function CabosContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuthStore();
   const [cabos, setCabos] = useState<CaboEleitoral[]>([]);
+  const [lideres, setLideres] = useState<Lider[]>([]);
+  const liderSelecionado = searchParams.get('liderId');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [openForm, setOpenForm] = useState(false);
   const [editItem, setEditItem] = useState<CaboEleitoral | null>(null);
   const [deleteItem, setDeleteItem] = useState<CaboEleitoral | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const form = useForm<CaboForm>({ resolver: zodResolver(formSchema) });
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const result = await getCabos({ search, page, perPage: PER_PAGE });
+      const result = await getCabos({ search, liderId: liderSelecionado ?? undefined, page, perPage: PER_PAGE });
       setCabos(result.items);
       setTotal(result.total);
+    } catch (error) {
+      console.error('Erro ao carregar cabos eleitorais.', error);
+      setCabos([]);
+      setTotal(0);
+      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar cabos eleitorais.');
     } finally {
       setLoading(false);
     }
-  }, [search, page]);
+  }, [search, page, liderSelecionado]);
 
   useEffect(() => { load(); }, [load]);
 
   useRefetchOnSyncInvalidate(load, [SYNC_KEYS.cabos]);
 
+  useEffect(() => {
+    let active = true;
+
+    getLideres({ search: '', page: 1, perPage: 1000 })
+      .then(result => {
+        if (active) setLideres(result.items);
+      })
+      .catch(error => {
+        console.error('Erro ao carregar lideranças.', error);
+        if (active) setLideres([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => { setPage(1); }, [search]);
 
   const openCreate = () => {
     setEditItem(null);
-    form.reset({ nome: '', titulo: '', zona: '', email: '', telefone: '', senha: '' });
+    form.reset({ nome: '', titulo: '', zona: '', email: '', telefone: '', liderId: liderSelecionado ?? '' });
     setOpenForm(true);
   };
 
   const openEdit = (item: CaboEleitoral) => {
     setEditItem(item);
-    form.reset({ nome: item.nome, titulo: item.titulo, zona: item.zona, email: item.email, telefone: item.telefone ?? '', senha: '' });
+    form.reset({
+      nome: item.nome,
+      titulo: item.titulo,
+      zona: item.zona,
+      email: item.email,
+      telefone: item.telefone ?? '',
+      liderId: item.liderId ?? liderSelecionado ?? '',
+    });
     setOpenForm(true);
+  };
+
+  const getTextColor = (hex?: string) => {
+    if (!hex) return '#0f172a';
+    const clean = hex.replace('#', '');
+    const value = clean.length === 3 ? clean.split('').map(char => char + char).join('') : clean;
+    const int = Number.parseInt(value, 16);
+    const r = (int >> 16) & 255;
+    const g = (int >> 8) & 255;
+    const b = int & 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.72 ? '#0f172a' : '#f8fafc';
   };
 
   const onSubmit = form.handleSubmit(async data => {
     setSaving(true);
     try {
+      const normalizedLiderId = data.liderId && data.liderId.trim() ? data.liderId : undefined;
+      const payload = {
+        nome: data.nome,
+        titulo: data.titulo,
+        zona: data.zona,
+        email: data.email,
+        telefone: data.telefone,
+        liderId: normalizedLiderId ?? liderSelecionado ?? undefined,
+      };
+
       if (editItem) {
-        await updateCabo(editItem.id, data);
+        await updateCabo(editItem.id, payload);
         toast('Cabo eleitoral atualizado.', 'success');
       } else {
-        await createCabo(data);
+        await createCabo(payload);
         toast('Cabo eleitoral criado.', 'success');
       }
       setOpenForm(false);
@@ -92,12 +150,16 @@ function CabosContent() {
     }
   });
 
+  const requiredDeletePhrase = deleteItem ? `Eu quero deletar o cabo eleitoral ${deleteItem.nome}` : '';
+  const canConfirmDelete = deleteConfirmation.trim() === requiredDeletePhrase;
+
   const onDelete = async () => {
-    if (!deleteItem) return;
+    if (!deleteItem || !canConfirmDelete) return;
     try {
       await deleteCabo(deleteItem.id);
       toast('Cabo eleitoral removido.', 'info');
       setDeleteItem(null);
+      setDeleteConfirmation('');
       await load();
     } catch {
       toast('Falha ao remover cabo eleitoral.', 'error');
@@ -118,6 +180,11 @@ function CabosContent() {
         </div>
 
         <div className={s.actions}>
+          {liderSelecionado && (
+            <Button variant="secondary" onClick={() => router.push('/lideres')}>
+              Voltar para lideranças
+            </Button>
+          )}
           <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
             Novo Cabo
           </Button>
@@ -126,6 +193,10 @@ function CabosContent() {
 
       {loading ? (
         <div className={s.loading}>Carregando cabos eleitorais...</div>
+      ) : loadError ? (
+        <div style={{ padding: 18 }}>
+          <RetryNotice message={loadError} onRetry={load} />
+        </div>
       ) : cabos.length === 0 ? (
         <EmptyState
           icon={<Users size={28} />}
@@ -143,6 +214,12 @@ function CabosContent() {
                   <div className={s.cardMeta}>Título: {item.titulo}</div>
                   <div className={s.cardMeta}>Zona: {item.zona}</div>
                   <div className={s.cardMeta}>{item.email}</div>
+                  <div
+                    className={s.cardFlag}
+                    style={{ backgroundColor: item.liderCor ?? 'rgba(148, 163, 184, 0.2)', color: getTextColor(item.liderCor) }}
+                  >
+                    {item.liderNome ? `Líder: ${item.liderNome}` : 'Líder: não definido'}
+                  </div>
                 </button>
 
                 <div className={s.cardActions}>
@@ -187,18 +264,40 @@ function CabosContent() {
           <input className={s.input} {...form.register('email')} />
           <label className={s.label}>Telefone</label>
           <input className={s.input} {...form.register('telefone')} placeholder="(11) 99999-9999" />
-          <label className={s.label}>Senha</label>
-          <input className={s.input} type="password" {...form.register('senha')} />
+          <label className={s.label}>Líder</label>
+          <select className={s.input} {...form.register('liderId')} defaultValue={form.watch('liderId') ?? ''}>
+            <option value="">Nenhum líder</option>
+            {lideres.map(item => (
+              <option key={item.id} value={item.id}>{item.nome}</option>
+            ))}
+          </select>
         </div>
       </Modal>
 
-      <ConfirmDialog
+      <Modal
         open={!!deleteItem}
+        onClose={() => { setDeleteItem(null); setDeleteConfirmation(''); }}
         title="Remover cabo eleitoral"
-        description={`Tem certeza que deseja remover "${deleteItem?.nome ?? ''}"?`}
-        onCancel={() => setDeleteItem(null)}
-        onConfirm={onDelete}
-      />
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setDeleteItem(null); setDeleteConfirmation(''); }}>Cancelar</Button>
+            <Button variant="danger" onClick={onDelete} disabled={!canConfirmDelete}>Confirmar remoção</Button>
+          </>
+        }
+      >
+        <div className={s.deleteConfirm}>
+          <p className={s.deleteText}>Tem certeza que deseja remover este cabo eleitoral?</p>
+          <p className={s.deleteWarning}>Essa ação é permanente e não pode ser desfeita.</p>
+          <div className={s.confirmPhraseBox}>{requiredDeletePhrase}</div>
+          <label className={s.label}>Digite exatamente a frase acima para confirmar:</label>
+          <input
+            className={s.input}
+            value={deleteConfirmation}
+            onChange={event => setDeleteConfirmation(event.target.value)}
+            placeholder={requiredDeletePhrase}
+          />
+        </div>
+      </Modal>
 
     </div>
   );
@@ -207,7 +306,7 @@ function CabosContent() {
 export default function CabosPage() {
   return (
     <ToastProvider>
-      <Layout title="Cabos Eleitorais" breadcrumb="Gestão de cabos e acesso à base">
+      <Layout title="Cabos Eleitorais" breadcrumb="Gestão de cabos por liderança">
         <CabosContent />
       </Layout>
     </ToastProvider>

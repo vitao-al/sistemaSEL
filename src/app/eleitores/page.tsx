@@ -18,6 +18,7 @@ import { SYNC_KEYS } from '@/lib/sync/data-sync';
 import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { CaboEleitoral, Eleitor } from '@/types';
 import { useAuthStore } from '@/store/auth';
+import RetryNotice from '@/components/ui/RetryNotice';
 import s from './eleitores.module.css';
 
 // Schema flexível: campos são opcionais porque o cadastro pode ser progressivo.
@@ -343,7 +344,15 @@ function EleitorViewModal({ open, onClose, eleitor }: { open: boolean; onClose: 
         ))}
         <div style={{ gridColumn: '1 / -1', background: 'var(--surface-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Cabo eleitoral vinculado</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{caboVinculado}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{caboVinculado}</div>
+            {eleitor.liderNome && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: eleitor.liderCor ?? '#3b82f6', display: 'inline-block', flexShrink: 0 }} />
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{eleitor.liderNome}</div>
+              </div>
+            )}
+          </div>
         </div>
         {eleitor.localVotacao && (
           <div style={{ gridColumn: '1 / -1', background: 'var(--surface-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
@@ -374,6 +383,7 @@ function EleitoresContent() {
   const [totalEleitores, setTotalEleitores] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [filterZona, setFilterZona] = useState('');
@@ -409,6 +419,7 @@ function EleitoresContent() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       // Filtros, ordenação e paginação ficam centralizados no backend para escalabilidade.
       const data = await getEleitores({
@@ -424,6 +435,11 @@ function EleitoresContent() {
 
       setEleitores(data.items);
       setTotalEleitores(data.total);
+    } catch (error) {
+      console.error('Erro ao carregar eleitores.', error);
+      setEleitores([]);
+      setTotalEleitores(0);
+      setLoadError(getErrorMessage(error, 'Falha ao carregar eleitores.'));
     } finally {
       setLoading(false);
     }
@@ -562,6 +578,10 @@ function EleitoresContent() {
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Carregando eleitores…
+          </div>
+        ) : loadError ? (
+          <div style={{ padding: 18 }}>
+            <RetryNotice message={loadError} onRetry={load} />
           </div>
         ) : eleitores.length === 0 ? (
           <EmptyState

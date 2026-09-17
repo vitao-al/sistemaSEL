@@ -17,6 +17,7 @@ model Admin {
   avatar    String?
   cargo     String?
   cabos     CaboEleitoral[]
+  lideres   Lider[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -27,17 +28,37 @@ model CaboEleitoral {
   id        String    @id @default(cuid())
   adminId   String
   admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  liderId   String?
+  lider     Lider?    @relation(fields: [liderId], references: [id], onDelete: SetNull)
   nome      String
   titulo    String
   zona      String
   email     String    @unique
   telefone  String?
-  senha     String
   avatar    String?
+  senha     String
   eleitores Eleitor[]
   familias  Familia[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([adminId])
+  @@index([liderId])
+}
+
+model Lider {
+  id        String          @id @default(cuid())
+  adminId   String
+  admin     Admin           @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  nome      String
+  email     String?         @unique
+  telefone  String?
+  cargo     String?
+  avatar    String?
+  cor       String?
+  cabos     CaboEleitoral[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@index([adminId])
 }

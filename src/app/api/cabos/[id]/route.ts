@@ -10,6 +10,7 @@ const caboUpdateSchema = z.object({
   zona: z.string().min(1).optional(),
   email: z.string().email().optional(),
   senha: z.string().min(6).optional(),
+  liderId: z.string().optional(),
 });
 
 type RouteParams = { params: { id: string } };

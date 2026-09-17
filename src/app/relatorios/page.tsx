@@ -5,6 +5,7 @@ import { BarChart3, Download, FileText, TrendingUp } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button, Modal, ToastProvider, useToast } from '@/components/ui';
 import { getCabosReport } from '@/lib/data';
+import RetryNotice from '@/components/ui/RetryNotice';
 import s from './relatorios.module.css';
 
 type ReportType = 'geral' | 'zona';
@@ -528,15 +529,18 @@ function RelatoriosPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [debugError, setDebugError] = useState<string | null>(null);
   const [showDebugError, setShowDebugError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadReportData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getCabosReport();
       setReportData(data);
+      setLoadError(null);
     } catch (error) {
       console.error('Erro ao carregar relatórios.', error);
       setReportData(null);
+      setLoadError(error instanceof Error ? error.message : 'Não foi possível carregar os relatórios do sistema.');
       toast('Não foi possível carregar os relatórios do sistema.', 'error');
     } finally {
       setLoading(false);
@@ -720,6 +724,10 @@ function RelatoriosPage() {
 
         {loading ? (
           <div className={s.loading}>Carregando relatórios...</div>
+        ) : loadError ? (
+          <div className={s.empty} style={{ padding: 18 }}>
+            <RetryNotice message={loadError} onRetry={loadReportData} />
+          </div>
         ) : !reportData ? (
           <div className={s.empty}>Não foi possível carregar os relatórios no momento.</div>
         ) : (

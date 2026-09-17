@@ -46,11 +46,24 @@ export interface CaboPayload {
   zona: string;
   email: string;
   telefone?: string;
-  senha: string;
+  senha?: string;
+  liderId?: string;
 }
 
 export type CreateCaboInput = CaboPayload;
 export type UpdateCaboInput = Partial<CaboPayload>;
+
+export interface LiderPayload {
+  nome: string;
+  email?: string;
+  telefone?: string;
+  cargo?: string;
+  avatar?: string;
+  cor?: string;
+}
+
+export type CreateLiderInput = LiderPayload;
+export type UpdateLiderInput = Partial<LiderPayload>;
 
 export type EleitorSortField = 'nome' | 'zona' | 'createdAt';
 export type EleitorSortDir = 'asc' | 'desc';
@@ -68,6 +81,13 @@ export interface EleitorQueryParams {
 }
 
 export interface CaboQueryParams {
+  search?: string;
+  liderId?: string;
+  page: number;
+  perPage: number;
+}
+
+export interface LiderQueryParams {
   search?: string;
   page: number;
   perPage: number;
@@ -87,6 +107,13 @@ export interface PaginatedCabosResult {
   perPage: number;
 }
 
+export interface PaginatedLideresResult {
+  items: import('@/types').Lider[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
 export interface DatabaseAdapter {
   findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null>;
   findAuthUserByEmail(email: string): Promise<AuthUserWithPassword | null>;
@@ -94,6 +121,12 @@ export interface DatabaseAdapter {
   updateAuthUser(role: AuthRole, id: string, data: Partial<AuthUserWithPassword>): Promise<AuthUserWithPassword>;
 
   listAdmins(): Promise<Admin[]>;
+
+  listLideres(adminId: string, params: LiderQueryParams): Promise<PaginatedLideresResult>;
+  findLiderById(id: string): Promise<import('@/types').Lider | null>;
+  createLider(adminId: string, data: CreateLiderInput): Promise<import('@/types').Lider>;
+  updateLider(id: string, data: UpdateLiderInput): Promise<import('@/types').Lider>;
+  deleteLider(id: string): Promise<void>;
 
   listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult>;
   findCaboById(id: string): Promise<CaboEleitoral | null>;

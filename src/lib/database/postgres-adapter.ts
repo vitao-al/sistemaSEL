@@ -41,6 +41,7 @@ function mapAdmin(record: {
 function mapCabo(record: {
   id: string;
   adminId: string;
+  liderId?: string | null;
   nome: string;
   titulo: string;
   zona: string;
@@ -49,17 +50,50 @@ function mapCabo(record: {
   avatar: string | null;
   createdAt: Date;
   updatedAt: Date;
-  admin?: { id: string; nome: string; email: string };
+  admin?: { id: string; nome: string; email: string } | null;
+  lider?: { id: string; nome: string; email?: string | null; cor?: string | null } | null;
 }): CaboEleitoral {
   return {
     id: record.id,
     adminId: record.adminId,
+    liderId: record.liderId ?? undefined,
     nome: record.nome,
     titulo: record.titulo,
     zona: record.zona,
     email: record.email,
     telefone: record.telefone ?? undefined,
     avatar: record.avatar ?? undefined,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+    admin: record.admin ?? undefined,
+    lider: record.lider ? { id: record.lider.id, nome: record.lider.nome, cor: record.lider.cor ?? undefined } : undefined,
+    liderNome: record.lider?.nome ?? undefined,
+    liderCor: record.lider?.cor ?? undefined,
+  };
+}
+
+function mapLider(record: {
+  id: string;
+  adminId: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  cargo: string | null;
+  avatar: string | null;
+  cor: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  admin?: { id: string; nome: string; email: string };
+}): import('@/types').Lider {
+  return {
+    id: record.id,
+    adminId: record.adminId,
+    nome: record.nome,
+    email: record.email ?? undefined,
+    telefone: record.telefone ?? undefined,
+    cargo: record.cargo ?? undefined,
+    avatar: record.avatar ?? undefined,
+    cor: record.cor ?? undefined,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
     admin: record.admin,
@@ -86,6 +120,7 @@ function mapEleitor(record: {
     titulo: string;
     zona: string;
     adminId: string;
+    lider?: { id: string; nome: string } | null;
   };
 }): Eleitor {
   return {
@@ -102,7 +137,13 @@ function mapEleitor(record: {
     promessaConcluida: record.promessaConcluida,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
-    caboEleitoral: record.caboEleitoral,
+    caboEleitoral: record.caboEleitoral ? {
+      ...record.caboEleitoral,
+      liderNome: record.caboEleitoral.lider?.nome ?? undefined,
+      liderCor: record.caboEleitoral.lider?.cor ?? undefined,
+    } : undefined,
+    liderNome: record.caboEleitoral?.lider?.nome ?? undefined,
+    liderCor: record.caboEleitoral?.lider?.cor ?? undefined,
   };
 }
 
@@ -139,37 +180,19 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null> {
     try {
-      const [admin, cabo] = await Promise.all([
-        prisma.admin.findFirst({ where: { email, senha } }),
-        prisma.caboEleitoral.findFirst({ where: { email, senha } }),
-      ]);
-
-      if (admin) {
-        return {
-          id: admin.id,
-          nome: admin.nome,
-          email: admin.email,
-          senha: admin.senha,
-          avatar: admin.avatar ?? undefined,
-          cargo: admin.cargo ?? 'Admin',
-          role: 'admin',
-          adminId: admin.id,
-          createdAt: admin.createdAt.toISOString(),
-        };
-      }
-
-      if (!cabo) return null;
+      const admin = await prisma.admin.findFirst({ where: { email, senha } });
+      if (!admin) return null;
 
       return {
-        id: cabo.id,
-        nome: cabo.nome,
-        email: cabo.email,
-        senha: cabo.senha,
-        avatar: cabo.avatar ?? undefined,
-        cargo: 'Cabo Eleitoral',
-        role: 'cabo',
-        adminId: cabo.adminId,
-        createdAt: cabo.createdAt.toISOString(),
+        id: admin.id,
+        nome: admin.nome,
+        email: admin.email,
+        senha: admin.senha,
+        avatar: admin.avatar ?? undefined,
+        cargo: admin.cargo ?? 'Admin',
+        role: 'admin',
+        adminId: admin.id,
+        createdAt: admin.createdAt.toISOString(),
       };
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao autenticar usuário.');
@@ -178,37 +201,19 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async findAuthUserByEmail(email: string): Promise<AuthUserWithPassword | null> {
     try {
-      const [admin, cabo] = await Promise.all([
-        prisma.admin.findUnique({ where: { email } }),
-        prisma.caboEleitoral.findUnique({ where: { email } }),
-      ]);
-
-      if (admin) {
-        return {
-          id: admin.id,
-          nome: admin.nome,
-          email: admin.email,
-          senha: admin.senha,
-          avatar: admin.avatar ?? undefined,
-          cargo: admin.cargo ?? 'Admin',
-          role: 'admin',
-          adminId: admin.id,
-          createdAt: admin.createdAt.toISOString(),
-        };
-      }
-
-      if (!cabo) return null;
+      const admin = await prisma.admin.findUnique({ where: { email } });
+      if (!admin) return null;
 
       return {
-        id: cabo.id,
-        nome: cabo.nome,
-        email: cabo.email,
-        senha: cabo.senha,
-        avatar: cabo.avatar ?? undefined,
-        cargo: 'Cabo Eleitoral',
-        role: 'cabo',
-        adminId: cabo.adminId,
-        createdAt: cabo.createdAt.toISOString(),
+        id: admin.id,
+        nome: admin.nome,
+        email: admin.email,
+        senha: admin.senha,
+        avatar: admin.avatar ?? undefined,
+        cargo: admin.cargo ?? 'Admin',
+        role: 'admin',
+        adminId: admin.id,
+        createdAt: admin.createdAt.toISOString(),
       };
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário por email.');
@@ -217,36 +222,23 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async findAuthUserById(role: 'admin' | 'cabo', id: string): Promise<AuthUserWithPassword | null> {
     try {
-      if (role === 'admin') {
-        const admin = await prisma.admin.findUnique({ where: { id } });
-        if (!admin) return null;
-
-        return {
-          id: admin.id,
-          nome: admin.nome,
-          email: admin.email,
-          senha: admin.senha,
-          avatar: admin.avatar ?? undefined,
-          cargo: admin.cargo ?? 'Admin',
-          role: 'admin',
-          adminId: admin.id,
-          createdAt: admin.createdAt.toISOString(),
-        };
+      if (role !== 'admin') {
+        return null;
       }
 
-      const cabo = await prisma.caboEleitoral.findUnique({ where: { id } });
-      if (!cabo) return null;
+      const admin = await prisma.admin.findUnique({ where: { id } });
+      if (!admin) return null;
 
       return {
-        id: cabo.id,
-        nome: cabo.nome,
-        email: cabo.email,
-        senha: cabo.senha,
-        avatar: cabo.avatar ?? undefined,
-        cargo: 'Cabo Eleitoral',
-        role: 'cabo',
-        adminId: cabo.adminId,
-        createdAt: cabo.createdAt.toISOString(),
+        id: admin.id,
+        nome: admin.nome,
+        email: admin.email,
+        senha: admin.senha,
+        avatar: admin.avatar ?? undefined,
+        cargo: admin.cargo ?? 'Admin',
+        role: 'admin',
+        adminId: admin.id,
+        createdAt: admin.createdAt.toISOString(),
       };
     } catch {
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao buscar usuário.');
@@ -255,38 +247,18 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async updateAuthUser(role: 'admin' | 'cabo', id: string, data: Partial<AuthUserWithPassword>): Promise<AuthUserWithPassword> {
     try {
-      if (role === 'admin') {
-        const updated = await prisma.admin.update({
-          where: { id },
-          data: {
-            nome: data.nome,
-            email: data.email,
-            senha: data.senha,
-            avatar: data.avatar,
-            cargo: data.cargo,
-          },
-        });
-
-        return {
-          id: updated.id,
-          nome: updated.nome,
-          email: updated.email,
-          senha: updated.senha,
-          avatar: updated.avatar ?? undefined,
-          cargo: updated.cargo ?? 'Admin',
-          role: 'admin',
-          adminId: updated.id,
-          createdAt: updated.createdAt.toISOString(),
-        };
+      if (role !== 'admin') {
+        throw new AppError('FORBIDDEN', 403, 'Cabo eleitoral não possui acesso de login.');
       }
 
-      const updated = await prisma.caboEleitoral.update({
+      const updated = await prisma.admin.update({
         where: { id },
         data: {
           nome: data.nome,
           email: data.email,
           senha: data.senha,
           avatar: data.avatar,
+          cargo: data.cargo,
         },
       });
 
@@ -296,12 +268,13 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         email: updated.email,
         senha: updated.senha,
         avatar: updated.avatar ?? undefined,
-        cargo: 'Cabo Eleitoral',
-        role: 'cabo',
-        adminId: updated.adminId,
+        cargo: updated.cargo ?? 'Admin',
+        role: 'admin',
+        adminId: updated.id,
         createdAt: updated.createdAt.toISOString(),
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError('DATABASE_ERROR', 500, 'Falha ao atualizar usuário.');
     }
   }
@@ -311,12 +284,101 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
     return admins.map(mapAdmin);
   }
 
+  async listLideres(adminId: string, params: { search?: string; page: number; perPage: number }): Promise<any> {
+    const page = Math.max(1, params.page);
+    const perPage = Math.max(1, params.perPage);
+    const skip = (page - 1) * perPage;
+
+    const where: Record<string, unknown> = { adminId };
+    if (params.search) {
+      where.OR = [{ nome: { contains: params.search, mode: 'insensitive' } }];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.lider.findMany({
+        where,
+        skip,
+        take: perPage,
+        orderBy: { createdAt: 'desc' },
+        include: { admin: { select: { id: true, nome: true, email: true } } },
+      }),
+      prisma.lider.count({ where }),
+    ]);
+
+    return { items: items.map(mapLider), total, page, perPage };
+  }
+
+  async findLiderById(id: string): Promise<import('@/types').Lider | null> {
+    const lider = await prisma.lider.findUnique({
+      where: { id },
+      include: { admin: { select: { id: true, nome: true, email: true } } },
+    });
+
+    return lider ? mapLider(lider) : null;
+  }
+
+  async createLider(adminId: string, data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<import('@/types').Lider> {
+    try {
+      const payload: Record<string, unknown> = { adminId, nome: data.nome };
+      if (data.email) payload.email = data.email;
+      if (data.telefone) payload.telefone = data.telefone;
+      if (data.cargo) payload.cargo = data.cargo;
+      if (data.avatar) payload.avatar = data.avatar;
+      if (data.cor) payload.cor = data.cor;
+
+      const lider = await prisma.lider.create({
+        data: payload as any,
+      });
+      return mapLider(lider);
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao criar liderança.');
+    }
+  }
+
+  async updateLider(id: string, data: { nome?: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<import('@/types').Lider> {
+    try {
+      const payload: Record<string, unknown> = {};
+      if (data.nome !== undefined) payload.nome = data.nome;
+      if (data.email !== undefined) payload.email = data.email || null;
+      if (data.telefone !== undefined) payload.telefone = data.telefone || null;
+      if (data.cargo !== undefined) payload.cargo = data.cargo || null;
+      if (data.avatar !== undefined) payload.avatar = data.avatar || null;
+      if (data.cor !== undefined) payload.cor = data.cor || null;
+
+      const lider = await prisma.lider.update({
+        where: { id },
+        data: payload as any,
+      });
+      return mapLider(lider);
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao atualizar liderança.');
+    }
+  }
+
+  async deleteLider(id: string): Promise<void> {
+    try {
+      await prisma.$transaction(async tx => {
+        await tx.caboEleitoral.updateMany({
+          where: { liderId: id },
+          data: { liderId: null },
+        });
+
+        await tx.lider.delete({ where: { id } });
+      });
+    } catch {
+      throw new AppError('DATABASE_ERROR', 500, 'Falha ao remover liderança.');
+    }
+  }
+
   async listCabos(adminId: string, params: CaboQueryParams): Promise<PaginatedCabosResult> {
     const page = Math.max(1, params.page);
     const perPage = Math.max(1, params.perPage);
     const skip = (page - 1) * perPage;
 
     const where: Record<string, unknown> = { adminId };
+    if (params.liderId) {
+      where.liderId = params.liderId;
+    }
     if (params.search) {
       where.OR = [
         { nome: { contains: params.search, mode: 'insensitive' } },
@@ -332,7 +394,10 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         skip,
         take: perPage,
         orderBy: { createdAt: 'desc' },
-        include: { admin: { select: { id: true, nome: true, email: true } } },
+        include: {
+          admin: { select: { id: true, nome: true, email: true } },
+          lider: { select: { id: true, nome: true, email: true, cor: true } },
+        },
       }),
       prisma.caboEleitoral.count({ where }),
     ]);
@@ -343,7 +408,10 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
   async findCaboById(id: string): Promise<CaboEleitoral | null> {
     const cabo = await prisma.caboEleitoral.findUnique({
       where: { id },
-      include: { admin: { select: { id: true, nome: true, email: true } } },
+      include: {
+        admin: { select: { id: true, nome: true, email: true } },
+        lider: { select: { id: true, nome: true, email: true } },
+      },
     });
 
     return cabo ? mapCabo(cabo) : null;
@@ -354,12 +422,13 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       const cabo = await prisma.caboEleitoral.create({
         data: {
           adminId,
+          liderId: data.liderId || null,
           nome: data.nome,
           titulo: data.titulo,
           zona: data.zona,
           email: data.email,
           telefone: data.telefone,
-          senha: data.senha,
+          senha: data.senha ?? '',
         },
       });
 
@@ -374,6 +443,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       const cabo = await prisma.caboEleitoral.update({
         where: { id },
         data: {
+          liderId: data.liderId ?? undefined,
           nome: data.nome,
           titulo: data.titulo,
           zona: data.zona,
@@ -411,7 +481,14 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       where,
       include: {
         caboEleitoral: {
-          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+          select: {
+            id: true,
+            nome: true,
+            titulo: true,
+            zona: true,
+            adminId: true,
+            lider: { select: { id: true, nome: true, cor: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -437,7 +514,14 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         take: perPage,
         include: {
           caboEleitoral: {
-            select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+            select: {
+              id: true,
+              nome: true,
+              titulo: true,
+              zona: true,
+              adminId: true,
+              lider: { select: { id: true, nome: true, cor: true } },
+            },
           },
         },
       }),
@@ -458,7 +542,14 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
       where: { ...where, id },
       include: {
         caboEleitoral: {
-          select: { id: true, nome: true, titulo: true, zona: true, adminId: true },
+          select: {
+            id: true,
+            nome: true,
+            titulo: true,
+            zona: true,
+            adminId: true,
+            lider: { select: { id: true, nome: true, cor: true } },
+          },
         },
       },
     });

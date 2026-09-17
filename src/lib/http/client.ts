@@ -32,7 +32,14 @@ export class HttpClientError extends Error {
 // 2) Enviar cookies da sessão automaticamente.
 // 3) Tratar envelope de erro padrão da API.
 export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  // If running in browser and offline, fail fast with a typed error so callers can handle it.
+  if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new HttpClientError('Sem conexão com a internet.', 0, 'NETWORK_OFFLINE');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -40,7 +47,12 @@ export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T
     },
     cache: 'no-store',
     credentials: 'include',
-  });
+    });
+  } catch (err) {
+    // Network-level failure (DNS, CORS, offline race) -> wrap in HttpClientError
+    const message = err instanceof Error ? err.message : String(err);
+    throw new HttpClientError(message || 'Erro de comunicação com o servidor.', 0, 'NETWORK_ERROR', err instanceof Error ? { stack: err.stack } : undefined);
+  }
 
   let payload: ApiEnvelope<T> | null = null;
 

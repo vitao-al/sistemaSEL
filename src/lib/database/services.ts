@@ -45,6 +45,10 @@ export class AuthService {
       throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
     }
 
+    if (foundUser.role === 'cabo' && !foundUser.adminId) {
+      throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
+    }
+
     if (foundUser.role === 'admin' && !foundUser.adminId) {
       throw new AppError('INTERNAL_ERROR', 500, 'Sessão inválida para admin.');
     }
@@ -126,6 +130,70 @@ export class AuthService {
   }
 }
 
+export class LiderService {
+  constructor(private readonly adapter: DatabaseAdapter) {}
+
+  async listLideres(scope: SessionScope, params: { search?: string; page: number; perPage: number }) {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem gerenciar lideranças.');
+    }
+
+    const result = await this.adapter.listLideres(scope.adminId, params);
+
+    // Para apresentar contagens no frontend, agregamos número de cabos e eleitores por líder
+    const allCabos = await this.adapter.listCabos(scope.adminId, { search: '', page: 1, perPage: 5000 });
+    const allEleitores = await this.adapter.listEleitores(scope);
+
+    const enrichedItems = result.items.map((lider: any) => {
+      const cabosDoLider = allCabos.items.filter(c => c.liderId === lider.id);
+      const totalCabos = cabosDoLider.length;
+      const caboIds = cabosDoLider.map(c => c.id);
+      const totalEleitores = allEleitores.filter(e => caboIds.includes(e.caboEleitoralId)).length;
+      return { ...lider, totalCabos, totalEleitores };
+    });
+
+    return { ...result, items: enrichedItems };
+  }
+
+  async findLiderById(id: string) {
+    return this.adapter.findLiderById(id);
+  }
+
+  async createLider(scope: SessionScope, data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<any> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem criar lideranças.');
+    }
+
+    return this.adapter.createLider(scope.adminId, data);
+  }
+
+  async updateLider(scope: SessionScope, liderId: string, data: { nome?: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }) {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem editar lideranças.');
+    }
+
+    const lider = await this.adapter.findLiderById(liderId);
+    if (!lider || lider.adminId !== scope.adminId) {
+      throw new AppError('NOT_FOUND', 404, 'Liderança não encontrada.');
+    }
+
+    return this.adapter.updateLider(liderId, data);
+  }
+
+  async deleteLider(scope: SessionScope, liderId: string): Promise<void> {
+    if (scope.role !== 'admin' || !scope.adminId) {
+      throw new AppError('FORBIDDEN', 403, 'Apenas admins podem remover lideranças.');
+    }
+
+    const lider = await this.adapter.findLiderById(liderId);
+    if (!lider || lider.adminId !== scope.adminId) {
+      throw new AppError('NOT_FOUND', 404, 'Liderança não encontrada.');
+    }
+
+    await this.adapter.deleteLider(liderId);
+  }
+}
+
 export class CaboService {
   constructor(private readonly adapter: DatabaseAdapter) {}
 
@@ -146,6 +214,13 @@ export class CaboService {
       throw new AppError('FORBIDDEN', 403, 'Apenas admins podem criar cabos eleitorais.');
     }
 
+    if (data.liderId) {
+      const lider = await this.adapter.findLiderById(data.liderId);
+      if (!lider || lider.adminId !== scope.adminId) {
+        throw new AppError('NOT_FOUND', 404, 'Liderança informada não encontrada.');
+      }
+    }
+
     const userWithEmail = await this.adapter.findAuthUserByEmail(data.email);
     if (userWithEmail) {
       throw new AppError('CONFLICT', 409, 'Este email já está em uso.');
@@ -162,6 +237,13 @@ export class CaboService {
     const cabo = await this.adapter.findCaboById(caboId);
     if (!cabo || cabo.adminId !== scope.adminId) {
       throw new AppError('NOT_FOUND', 404, 'Cabo eleitoral não encontrado.');
+    }
+
+    if (data.liderId) {
+      const lider = await this.adapter.findLiderById(data.liderId);
+      if (!lider || lider.adminId !== scope.adminId) {
+        throw new AppError('NOT_FOUND', 404, 'Liderança informada não encontrada.');
+      }
     }
 
     if (data.email) {

@@ -5,6 +5,7 @@
 import type { DatabaseAdapter, AuthUserWithPassword } from '@/lib/database/types';
 
 const emptyCabosPage = { items: [] as never[], total: 0, page: 1, perPage: 20 };
+const emptyLideresPage = { items: [] as never[], total: 0, page: 1, perPage: 20 };
 
 async function notImplemented(): Promise<never> {
   throw new Error('not implemented in mock');
@@ -17,6 +18,11 @@ export function createMockDatabaseAdapter(overrides: Partial<DatabaseAdapter> = 
     findAuthUserById: async () => null,
     updateAuthUser: notImplemented,
     listAdmins: async () => [],
+    listLideres: async () => emptyLideresPage,
+    findLiderById: async () => null,
+    createLider: notImplemented,
+    updateLider: notImplemented,
+    deleteLider: notImplemented,
     listCabos: async () => emptyCabosPage,
     findCaboById: async () => null,
     createCabo: notImplemented,

@@ -1,6 +1,6 @@
 // Camada de acesso a dados no client.
 
-import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor, Familia, FamiliaMembro } from '@/types';
+import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor, Familia, FamiliaMembro, Lider } from '@/types';
 import type { ConsentCookiePayload } from './cookies';
 import { httpRequest } from './http/client';
 import {
@@ -26,6 +26,13 @@ export type EleitorListQuery = {
 };
 
 export type CaboListQuery = {
+  search?: string;
+  liderId?: string;
+  page: number;
+  perPage: number;
+};
+
+export type LiderListQuery = {
   search?: string;
   page: number;
   perPage: number;
@@ -82,16 +89,38 @@ export async function getAdmins(): Promise<Admin[]> {
   return httpRequest('/api/auth/admins');
 }
 
-export async function registerCabo(data: { nome: string; email: string; senha: string; titulo: string; zona: string; adminId: string }): Promise<CaboEleitoral> {
-  return httpRequest('/api/auth/register', {
+export async function getLideres(query: LiderListQuery): Promise<{ items: Lider[]; total: number; page: number; perPage: number }> {
+  const params = new URLSearchParams();
+  if (query.search) params.set('search', query.search);
+  params.set('page', String(query.page));
+  params.set('perPage', String(query.perPage));
+  return httpRequest(`/api/lideres?${params.toString()}`);
+}
+
+export async function createLider(data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
+  return httpRequest('/api/lideres', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function updateLider(id: string, data: Partial<{ nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }>): Promise<Lider> {
+  return httpRequest(`/api/lideres/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteLider(id: string): Promise<void> {
+  await httpRequest(`/api/lideres/${id}`, {
+    method: 'DELETE',
   });
 }
 
 export async function getCabos(query: CaboListQuery): Promise<PaginatedCabosResult> {
   const params = new URLSearchParams();
   if (query.search) params.set('search', query.search);
+  if (query.liderId) params.set('liderId', query.liderId);
   params.set('page', String(query.page));
   params.set('perPage', String(query.perPage));
   return httpRequest(`/api/cabos?${params.toString()}`);

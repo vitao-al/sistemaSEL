@@ -125,13 +125,13 @@ export default function DashboardPage() {
           />
           <div
             className={s.bannerCard}
-            onClick={() => router.push(user?.role === 'admin' ? '/cabos' : '/eleitores')}
+            onClick={() => router.push(user?.role === 'admin' ? '/lideres' : '/eleitores')}
             style={{ cursor: 'pointer' }}
           >
             <div className={s.bannerBg} />
             <div className={s.bannerBg2} />
             <div className={s.bannerLabel}>Ação rápida</div>
-            <div className={s.bannerValue} style={{ fontSize: 22 }}>{user?.role === 'admin' ? 'Gerenciar Cabos' : 'Adicionar Eleitor'}</div>
+            <div className={s.bannerValue} style={{ fontSize: 22 }}>{user?.role === 'admin' ? 'Gerenciar Líderes' : 'Adicionar Eleitor'}</div>
             <div className={s.bannerBadge}>
               <Plus size={12} />
               {user?.role === 'admin' ? 'Abrir gestão' : 'Cadastrar novo'}

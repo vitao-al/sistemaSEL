@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Users } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Badge, Button, Modal } from '@/components/ui';
+import RetryNotice from '@/components/ui/RetryNotice';
 import { addFamiliaMembro, getCabos, getEleitores, getFamilias } from '@/lib/data';
 import { groupFamiliaMembrosPorGrau } from '@/lib/familias';
 import type { CaboEleitoral, Eleitor, Familia } from '@/types';
@@ -33,6 +34,7 @@ export default function FamiliaDetailPage({ params }: { params: { id: string } }
   const [familia, setFamilia] = useState<Familia | null>(null);
   const [cabos, setCabos] = useState<CaboEleitoral[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberCaboFilter, setMemberCaboFilter] = useState('all');
@@ -45,11 +47,16 @@ export default function FamiliaDetailPage({ params }: { params: { id: string } }
 
   const loadFamilia = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
 
     try {
       const familias = await getFamilias();
       const selected = familias.find(item => item.id === params.id) ?? null;
       setFamilia(selected);
+    } catch (error) {
+      console.error('Erro ao carregar família.', error);
+      setFamilia(null);
+      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar família.');
     } finally {
       setLoading(false);
     }
@@ -173,6 +180,16 @@ export default function FamiliaDetailPage({ params }: { params: { id: string } }
     return (
       <Layout title="FAMÍLIA" breadcrumb="Detalhes da família">
         <div className={s.loading}>Carregando família...</div>
+      </Layout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Layout title="FAMÍLIA" breadcrumb="Detalhes da família">
+        <div style={{ padding: 18 }}>
+          <RetryNotice message={loadError} onRetry={loadFamilia} />
+        </div>
       </Layout>
     );
   }

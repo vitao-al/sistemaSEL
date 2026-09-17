@@ -11,70 +11,92 @@ export async function GET(request: NextRequest) {
       throw new AppError('FORBIDDEN', 403, 'Apenas admins podem gerar relatório geral.');
     }
 
-    const { caboService, eleitorService } = createServerServices();
-    const admins = await caboService.listAdmins();
+    const { caboService, eleitorService, liderService } = createServerServices();
 
-    // Monta relatório por admin com detalhes por cabo e por eleitor.
-    const adminsReport = await Promise.all(
-      admins.map(async admin => {
-        const adminScope = { role: 'admin' as const, userId: admin.id, adminId: admin.id };
-        const cabosResult = await caboService.getCabosPage(adminScope, { search: '', page: 1, perPage: 5000 });
-        const eleitoresAll = await eleitorService.getEleitores(adminScope);
+    // Gera relatório apenas para o admin autenticado (escopo atual)
+    const allAdmins = await caboService.listAdmins();
+    const currentAdmin = allAdmins.find(a => a.id === scope.adminId);
+    if (!currentAdmin) {
+      throw new AppError('NOT_FOUND', 404, 'Admin não encontrado.');
+    }
 
-        const cabos = await Promise.all(
-          cabosResult.items.map(async cabo => {
-            // eleitores do cabo (cada eleitor será uma linha na tabela)
-            const eleitores = eleitoresAll.filter(item => item.caboEleitoralId === cabo.id).map(e => ({
-              id: e.id,
-              nome: e.nome ?? '-',
-              cpf: e.cpf ?? '-',
-              tituloEleitor: e.tituloEleitor ?? '-',
-              zona: e.zona ?? '-',
-              sessao: e.sessao ?? '-',
-              telefone: e.telefone ?? '-',
-              localVotacao: e.localVotacao ?? '-',
-              promessa: e.promessa ?? undefined,
-              promessaConcluida: Boolean(e.promessaConcluida),
-              statusPromessa: e.promessa
-                ? e.promessaConcluida
-                  ? 'Concluída'
-                  : 'Pendente'
-                : 'Sem promessa',
-              createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : null,
-              updatedAt: e.updatedAt ? new Date(e.updatedAt).toISOString() : null,
-            }));
+    const adminScope = { role: 'admin' as const, userId: currentAdmin.id, adminId: currentAdmin.id };
+    const cabosResult = await caboService.getCabosPage(adminScope, { search: '', page: 1, perPage: 5000 });
+    const eleitoresAll = await eleitorService.getEleitores(adminScope);
 
-            // contagem de famílias vinculadas ao cabo
-            const familiasCount = await prisma.familia.count({ where: { caboEleitoralId: cabo.id } });
+    const cabos = await Promise.all(
+      cabosResult.items.map(async cabo => {
+        const eleitores = eleitoresAll.filter(item => item.caboEleitoralId === cabo.id).map(e => ({
+          id: e.id,
+          nome: e.nome ?? '-',
+          cpf: e.cpf ?? '-',
+          tituloEleitor: e.tituloEleitor ?? '-',
+          zona: e.zona ?? '-',
+          sessao: e.sessao ?? '-',
+          telefone: e.telefone ?? '-',
+          localVotacao: e.localVotacao ?? '-',
+          promessa: e.promessa ?? undefined,
+          promessaConcluida: Boolean(e.promessaConcluida),
+          statusPromessa: e.promessa
+            ? e.promessaConcluida
+              ? 'Concluída'
+              : 'Pendente'
+            : 'Sem promessa',
+          createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : null,
+          updatedAt: e.updatedAt ? new Date(e.updatedAt).toISOString() : null,
+        }));
 
-            return {
-              cabo,
-              familiasCount,
-              eleitores,
-            };
-          })
-        );
-
-        const totalCabos = cabos.length;
-        const totalEleitores = cabos.reduce((acc, c) => acc + c.eleitores.length, 0);
-        const totalPromessas = cabos.reduce((acc, c) => acc + c.eleitores.filter(el => el.promessa).length, 0);
-        const totalPromessasConcluidas = cabos.reduce((acc, c) => acc + c.eleitores.filter(el => el.promessaConcluida).length, 0);
-        const totalFamilias = await prisma.familia.count({ where: { caboEleitoral: { adminId: admin.id } } });
+        const familiasCount = await prisma.familia.count({ where: { caboEleitoralId: cabo.id } });
 
         return {
-          admin,
-          cabos,
-          metrics: {
-            totalCabos,
-            totalEleitores,
-            totalPromessas,
-            totalPromessasConcluidas,
-            totalPromessasPendentes: Math.max(0, totalPromessas - totalPromessasConcluidas),
-            totalFamilias,
-          },
+          cabo,
+          familiasCount,
+          eleitores,
         };
       })
     );
+
+    // Agrupa cabos por líder para seção de líderes no relatório
+    const cabosByLider = new Map<string | null, any[]>();
+    cabos.forEach(c => {
+      const lid = (c.cabo && (c.cabo as any).liderId) ?? null;
+      const arr = cabosByLider.get(lid) ?? [];
+      arr.push(c);
+      cabosByLider.set(lid, arr);
+    });
+
+    const adminTotalCabos = cabos.length;
+    const adminTotalEleitores = cabos.reduce((acc, c) => acc + c.eleitores.length, 0);
+    const adminTotalPromessas = cabos.reduce((acc, c) => acc + c.eleitores.filter(el => el.promessa).length, 0);
+    const adminTotalPromessasConcluidas = cabos.reduce((acc, c) => acc + c.eleitores.filter(el => el.promessaConcluida).length, 0);
+    const adminTotalFamilias = await prisma.familia.count({ where: { caboEleitoral: { adminId: currentAdmin.id } } });
+
+    // Monta estrutura de líderes contendo cabos e métricas por líder
+    const lideresForAdmin = [] as any[];
+    for (const [liderId, grupo] of cabosByLider) {
+      if (!liderId) continue; // pula cabos sem líder
+      const lider = await liderService.findLiderById(liderId);
+      if (!lider) continue;
+      const totalCabos = grupo.length;
+      const totalEleitores = grupo.reduce((acc, g) => acc + g.eleitores.length, 0);
+      lideresForAdmin.push({ lider, cabos: grupo, metrics: { totalCabos, totalEleitores } });
+    }
+
+    const adminsReport = [
+      {
+        admin: currentAdmin,
+        cabos,
+        lideres: lideresForAdmin,
+        metrics: {
+          totalCabos: adminTotalCabos,
+          totalEleitores: adminTotalEleitores,
+          totalPromessas: adminTotalPromessas,
+          totalPromessasConcluidas: adminTotalPromessasConcluidas,
+          totalPromessasPendentes: Math.max(0, adminTotalPromessas - adminTotalPromessasConcluidas),
+          totalFamilias: adminTotalFamilias,
+        },
+      },
+    ];
     // Métricas globais
     const totalAdmins = adminsReport.length;
     const totalCabos = adminsReport.reduce((acc, a) => acc + a.metrics.totalCabos, 0);
