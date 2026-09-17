@@ -124,14 +124,16 @@ function CabosContent() {
   const onSubmit = form.handleSubmit(async data => {
     setSaving(true);
     try {
-      const normalizedLiderId = data.liderId && data.liderId.trim() ? data.liderId : undefined;
+      const normalizedLiderId = data.liderId && data.liderId.trim() ? data.liderId : '';
       const payload = {
         nome: data.nome,
         titulo: data.titulo,
         zona: data.zona,
         email: data.email,
         telefone: data.telefone,
-        liderId: normalizedLiderId ?? liderSelecionado ?? undefined,
+        // Ao editar, enviar o valor direto do select (string vazia sinaliza remoção).
+        // Ao criar, se nenhum valor selecionado, usar `liderSelecionado` quando presente.
+        liderId: editItem ? normalizedLiderId : (normalizedLiderId || liderSelecionado || undefined),
       };
 
       if (editItem) {
@@ -265,7 +267,7 @@ function CabosContent() {
           <label className={s.label}>Telefone</label>
           <input className={s.input} {...form.register('telefone')} placeholder="(11) 99999-9999" />
           <label className={s.label}>Líder</label>
-          <select className={s.input} {...form.register('liderId')} defaultValue={form.watch('liderId') ?? ''}>
+          <select className={s.input} {...form.register('liderId')}>
             <option value="">Nenhum líder</option>
             {lideres.map(item => (
               <option key={item.id} value={item.id}>{item.nome}</option>

@@ -440,10 +440,23 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async updateCabo(id: string, data: UpdateCaboInput): Promise<CaboEleitoral> {
     try {
+      let newLiderId = Object.prototype.hasOwnProperty.call(data, 'liderId')
+        ? (data.liderId === '' ? null : data.liderId)
+        : undefined;
+
+      // Defensive: if a non-empty string id is provided, ensure the leader exists,
+      // otherwise set to null to avoid foreign key constraint errors.
+      if (typeof newLiderId === 'string' && newLiderId) {
+        const liderExists = await prisma.lider.findUnique({ where: { id: newLiderId } });
+        if (!liderExists) {
+          newLiderId = null;
+        }
+      }
+
       const cabo = await prisma.caboEleitoral.update({
         where: { id },
         data: {
-          liderId: data.liderId ?? undefined,
+          liderId: newLiderId,
           nome: data.nome,
           titulo: data.titulo,
           zona: data.zona,

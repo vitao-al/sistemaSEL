@@ -3,6 +3,7 @@
 import { Admin, AuthUser, CaboEleitoral, DashboardStats, Eleitor, Familia, FamiliaMembro, Lider } from '@/types';
 import type { ConsentCookiePayload } from './cookies';
 import { httpRequest } from './http/client';
+import { broadcastInvalidateKeys, SYNC_KEYS } from './sync/data-sync';
 import {
   CaboPayload,
   EleitorUniqueConflict,
@@ -98,23 +99,28 @@ export async function getLideres(query: LiderListQuery): Promise<{ items: Lider[
 }
 
 export async function createLider(data: { nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }): Promise<Lider> {
-  return httpRequest('/api/lideres', {
+  const result = await httpRequest<Lider>('/api/lideres', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  try { broadcastInvalidateKeys([SYNC_KEYS.cabos]); } catch { /* noop */ }
+  return result;
 }
 
 export async function updateLider(id: string, data: Partial<{ nome: string; email?: string; telefone?: string; cargo?: string; avatar?: string; cor?: string }>): Promise<Lider> {
-  return httpRequest(`/api/lideres/${id}`, {
+  const result = await httpRequest<Lider>(`/api/lideres/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+  try { broadcastInvalidateKeys([SYNC_KEYS.cabos]); } catch { /* noop */ }
+  return result;
 }
 
 export async function deleteLider(id: string): Promise<void> {
   await httpRequest(`/api/lideres/${id}`, {
     method: 'DELETE',
   });
+  try { broadcastInvalidateKeys([SYNC_KEYS.cabos]); } catch { /* noop */ }
 }
 
 export async function getCabos(query: CaboListQuery): Promise<PaginatedCabosResult> {

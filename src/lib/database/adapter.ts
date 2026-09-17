@@ -370,10 +370,15 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     const cabos = this.readCabos();
     const index = cabos.findIndex(item => item.id === id);
     if (index === -1) throw new Error('Cabo não encontrado.');
+    // Permite remover líder passando string vazia ('') no payload.
+    const newLiderId = Object.prototype.hasOwnProperty.call(data, 'liderId')
+      ? (data.liderId === '' ? undefined : data.liderId)
+      : cabos[index].liderId;
+
     cabos[index] = {
       ...cabos[index],
       ...data,
-      liderId: data.liderId ?? cabos[index].liderId,
+      liderId: newLiderId,
       telefone: data.telefone ?? cabos[index].telefone,
       senha: data.senha ?? cabos[index].senha,
       updatedAt: new Date().toISOString(),
