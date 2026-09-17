@@ -71,7 +71,9 @@ export interface Eleitor {
   promessaConcluida?: boolean;
   createdAt: string;
   updatedAt: string;
-  caboEleitoral?: Pick<CaboEleitoral, 'id' | 'nome' | 'titulo' | 'zona' | 'adminId' | 'liderNome'>;
+  caboEleitoral?: Pick<CaboEleitoral, 'id' | 'nome' | 'titulo' | 'zona' | 'adminId' | 'liderNome' | 'liderCor'>;
+  // inclui cor do líder quando disponível
+  // (algumas consultas retornam `liderCor` junto ao `caboEleitoral`)
   liderNome?: string;
 
 

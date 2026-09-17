@@ -120,7 +120,7 @@ function mapEleitor(record: {
     titulo: string;
     zona: string;
     adminId: string;
-    lider?: { id: string; nome: string } | null;
+    lider?: { id: string; nome: string; cor?: string | null } | null;
   };
 }): Eleitor {
   return {

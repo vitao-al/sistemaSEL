@@ -356,7 +356,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       zona: data.zona,
       email: data.email,
       telefone: data.telefone,
-      senha: data.senha,
+      senha: data.senha ?? '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -375,6 +375,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       ...data,
       liderId: data.liderId ?? cabos[index].liderId,
       telefone: data.telefone ?? cabos[index].telefone,
+      senha: data.senha ?? cabos[index].senha,
       updatedAt: new Date().toISOString(),
     };
     this.writeCabos(cabos);
