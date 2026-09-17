@@ -24,6 +24,8 @@ export interface Lider {
   updatedAt?: string;
   admin?: Pick<Admin, 'id' | 'nome' | 'email'>;
   cabos?: Array<Pick<CaboEleitoral, 'id' | 'nome' | 'titulo' | 'zona'>>;
+  totalEleitores?: number;
+  totalCabos?: number;
 }
 
 export interface CaboEleitoral {
