@@ -13,7 +13,7 @@ model Admin {
   id        String          @id @default(cuid())
   nome      String
   email     String          @unique
-  senha     String
+  senha     String?
   avatar    String?
   cargo     String?
   cabos     CaboEleitoral[]
@@ -36,7 +36,6 @@ model CaboEleitoral {
   email     String    @unique
   telefone  String?
   avatar    String?
-  senha     String
   eleitores Eleitor[]
   familias  Familia[]
   createdAt DateTime  @default(now())

@@ -187,7 +187,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         id: admin.id,
         nome: admin.nome,
         email: admin.email,
-        senha: admin.senha,
+        senha: admin.senha ?? '',
         avatar: admin.avatar ?? undefined,
         cargo: admin.cargo ?? 'Admin',
         role: 'admin',
@@ -208,7 +208,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         id: admin.id,
         nome: admin.nome,
         email: admin.email,
-        senha: admin.senha,
+        senha: admin.senha ?? '',
         avatar: admin.avatar ?? undefined,
         cargo: admin.cargo ?? 'Admin',
         role: 'admin',
@@ -233,7 +233,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         id: admin.id,
         nome: admin.nome,
         email: admin.email,
-        senha: admin.senha,
+        senha: admin.senha ?? '',
         avatar: admin.avatar ?? undefined,
         cargo: admin.cargo ?? 'Admin',
         role: 'admin',
@@ -266,7 +266,7 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
         id: updated.id,
         nome: updated.nome,
         email: updated.email,
-        senha: updated.senha,
+        senha: updated.senha ?? '',
         avatar: updated.avatar ?? undefined,
         cargo: updated.cargo ?? 'Admin',
         role: 'admin',
@@ -428,7 +428,6 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
           zona: data.zona,
           email: data.email,
           telefone: data.telefone,
-          senha: data.senha ?? '',
         },
       });
 
@@ -462,7 +461,6 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
           zona: data.zona,
           email: data.email,
           telefone: data.telefone,
-          senha: data.senha,
         },
       });
 

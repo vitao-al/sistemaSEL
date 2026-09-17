@@ -35,7 +35,7 @@ const DEFAULT_ADMINS: (Admin & { senha: string })[] = [
   },
 ];
 
-const DEFAULT_CABOS: (CaboEleitoral & { senha: string })[] = [
+const DEFAULT_CABOS: CaboEleitoral[] = [
   {
     id: 'cabo-1',
     adminId: 'admin-1',
@@ -44,7 +44,6 @@ const DEFAULT_CABOS: (CaboEleitoral & { senha: string })[] = [
     zona: '01',
     email: 'cabo1@sistemasel.com',
     telefone: '(11) 99999-0000',
-    senha: '123456',
     createdAt: '2026-03-15T10:00:00Z',
     updatedAt: '2026-03-15T10:00:00Z',
   },
@@ -95,7 +94,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(items));
   }
 
-  private readCabos(): (CaboEleitoral & { senha: string })[] {
+  private readCabos(): CaboEleitoral[] {
     if (!this.isBrowser()) return [...this.cabosFallback];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CABOS);
@@ -106,7 +105,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
-  private writeCabos(items: (CaboEleitoral & { senha: string })[]): void {
+  private writeCabos(items: CaboEleitoral[]): void {
     if (!this.isBrowser()) {
       this.cabosFallback = [...items];
       return;
@@ -157,21 +156,8 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     if (admin) {
       return { ...admin, role: 'admin', adminId: admin.id };
     }
-
-    const cabo = this.readCabos().find(item => item.email === email && item.senha === senha);
-    if (!cabo) return null;
-
-    return {
-      id: cabo.id,
-      nome: cabo.nome,
-      email: cabo.email,
-      senha: cabo.senha,
-      avatar: cabo.avatar,
-      cargo: 'Cabo Eleitoral',
-      role: 'cabo',
-      adminId: cabo.adminId,
-      createdAt: cabo.createdAt,
-    };
+    // Cabos não possuem senha — apenas admins podem autenticar por credencial local.
+    return null;
   }
 
   async findAuthUserByEmail(email: string): Promise<AuthUserWithPassword | null> {
@@ -185,7 +171,8 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       id: cabo.id,
       nome: cabo.nome,
       email: cabo.email,
-      senha: cabo.senha,
+      // Cabos não têm senha armazenada; provide empty string to satisfy AuthUserWithPassword type when needed.
+      senha: '',
       avatar: cabo.avatar,
       cargo: 'Cabo Eleitoral',
       role: 'cabo',
@@ -207,7 +194,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       id: cabo.id,
       nome: cabo.nome,
       email: cabo.email,
-      senha: cabo.senha,
+      senha: '',
       avatar: cabo.avatar,
       cargo: 'Cabo Eleitoral',
       role: 'cabo',
@@ -236,7 +223,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       id: cabos[index].id,
       nome: cabos[index].nome,
       email: cabos[index].email,
-      senha: cabos[index].senha,
+      senha: '',
       avatar: cabos[index].avatar,
       cargo: 'Cabo Eleitoral',
       role: 'cabo',
@@ -323,7 +310,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       .filter(item => item.adminId === adminId)
       .filter(item => params.liderId ? item.liderId === params.liderId : item.liderId == null)
       .filter(item => !search || [item.nome, item.titulo, item.zona, item.email].join(' ').toLowerCase().includes(search))
-      .map(({ senha: _senha, ...item }) => item)
+      .map(item => item)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     const page = Math.max(1, params.page);
@@ -341,8 +328,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   async findCaboById(id: string): Promise<CaboEleitoral | null> {
     const cabo = this.readCabos().find(item => item.id === id);
     if (!cabo) return null;
-    const { senha: _senha, ...safe } = cabo;
-    return safe;
+    return cabo;
   }
 
   async createCabo(adminId: string, data: CreateCaboInput): Promise<CaboEleitoral> {
@@ -356,14 +342,12 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       zona: data.zona,
       email: data.email,
       telefone: data.telefone,
-      senha: data.senha ?? '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     cabos.unshift(item);
     this.writeCabos(cabos);
-    const { senha: _senha, ...safe } = item;
-    return safe;
+    return item;
   }
 
   async updateCabo(id: string, data: UpdateCaboInput): Promise<CaboEleitoral> {
@@ -380,12 +364,12 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
       ...data,
       liderId: newLiderId,
       telefone: data.telefone ?? cabos[index].telefone,
-      senha: data.senha ?? cabos[index].senha,
+      // preserve cabos[index].senha if present, but do not require or overwrite it here
+      // (senha field removed from create/update flows for cabos)
       updatedAt: new Date().toISOString(),
     };
     this.writeCabos(cabos);
-    const { senha: _senha, ...safe } = cabos[index];
-    return safe;
+    return cabos[index];
   }
 
   async deleteCabo(id: string): Promise<void> {

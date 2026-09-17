@@ -46,7 +46,6 @@ export interface CaboPayload {
   zona: string;
   email: string;
   telefone?: string;
-  senha?: string;
   liderId?: string;
 }
 

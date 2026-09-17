@@ -29,7 +29,6 @@ async function main() {
       nome: 'Carlos Andrade',
       titulo: '111122223333',
       zona: '01',
-      senha: '123456',
     },
     create: {
       adminId: admin.id,
@@ -37,7 +36,6 @@ async function main() {
       titulo: '111122223333',
       zona: '01',
       email: 'cabo1@sistemasel.com',
-      senha: '123456',
     },
   });
 

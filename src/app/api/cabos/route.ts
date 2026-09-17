@@ -9,7 +9,6 @@ const caboCreateSchema = z.object({
   titulo: z.string().min(1, 'Título obrigatório.'),
   zona: z.string().min(1, 'Zona obrigatória.'),
   email: z.string().email('Email inválido.'),
-  senha: z.string().min(6, 'Senha precisa ter ao menos 6 caracteres.'),
   liderId: z.string().optional(),
 });
 
