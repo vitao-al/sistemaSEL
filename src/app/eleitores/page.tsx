@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Search, Plus, Edit2, Trash2, ChevronUp, ChevronDown,
-  ChevronsUpDown, Users, ChevronLeft, ChevronRight, Eye, MoreHorizontal
+  ChevronsUpDown, Users, ChevronLeft, ChevronRight, Eye, MoreHorizontal, Printer
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -95,6 +95,80 @@ function getInitials(name?: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'relatorio';
+}
+
+async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  const doc = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageWidth, 22, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Eleitores cadastrados por ${caboNome}`, 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Total: ${eleitores.length} registros`, pageWidth - 48, 14);
+
+  const rows = eleitores.map((eleitor) => [
+    eleitor.nome ?? '—',
+    eleitor.cpf ?? '—',
+    eleitor.tituloEleitor ?? '—',
+    eleitor.zona ?? '—',
+    eleitor.sessao ?? '—',
+    eleitor.localVotacao ?? '—',
+    eleitor.promessa ? (eleitor.promessaConcluida ? 'Concluída' : 'Pendente') : 'Sem promessa',
+  ]);
+
+  autoTable(doc, {
+    head: [['Nome', 'CPF', 'Título', 'Zona', 'Sessão', 'Local de votação', 'Promessa']],
+    body: rows,
+    startY: 30,
+    styles: {
+      fontSize: 7,
+      cellPadding: 2,
+      overflow: 'linebreak',
+      valign: 'middle',
+      textColor: [15, 23, 42],
+    },
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    alternateRowStyles: {
+      fillColor: [241, 245, 249],
+    },
+    theme: 'striped',
+    margin: { left: 8, right: 8 },
+    tableWidth: 'wrap',
+    columnStyles: {
+      0: { cellWidth: 42 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 27 },
+      3: { cellWidth: 16 },
+      4: { cellWidth: 16 },
+      5: { cellWidth: 40 },
+      6: { cellWidth: 28 },
+    },
+  });
+
+  doc.save(`eleitores-${slugify(caboNome)}.pdf`);
 }
 
 type SortField = 'nome' | 'zona' | 'createdAt';
@@ -463,9 +537,51 @@ function EleitoresContent() {
   }, [eleitores]);
 
   const totalPages = Math.max(1, Math.ceil(totalEleitores / PER_PAGE));
+  const reportCaboName = user?.role === 'cabo' ? (user.nome || 'Cabo eleitoral') : (selectedCabo?.nome || 'Todos os cabos');
+  const canPrintReport = user?.role === 'cabo' || !!selectedCabo;
 
   // Sempre volta para a primeira página quando filtros/ordenação mudam.
   useEffect(() => { setPage(1); }, [search, filterZona, filterPromessa, sortField, sortDir, filterCabo]);
+
+  async function handlePrintReport() {
+    if (!canPrintReport) return;
+
+    try {
+      const firstPage = await getEleitores({
+        search,
+        zona: filterZona,
+        promessa: filterPromessa as '' | 'concluida' | 'pendente' | 'sem',
+        sortField,
+        sortDir,
+        caboEleitoralId: user?.role === 'admin' ? (filterCabo || undefined) : undefined,
+        page: 1,
+        perPage: 100,
+      });
+
+      const totalPagesForReport = Math.ceil(firstPage.total / 100);
+      const allItems = [...firstPage.items];
+
+      for (let currentPage = 2; currentPage <= totalPagesForReport; currentPage += 1) {
+        const pageResult = await getEleitores({
+          search,
+          zona: filterZona,
+          promessa: filterPromessa as '' | 'concluida' | 'pendente' | 'sem',
+          sortField,
+          sortDir,
+          caboEleitoralId: user?.role === 'admin' ? (filterCabo || undefined) : undefined,
+          page: currentPage,
+          perPage: 100,
+        });
+        allItems.push(...pageResult.items);
+      }
+
+      await printEleitoresReportPdf(allItems, reportCaboName);
+      toast('Relatório em PDF gerado com sucesso.', 'success');
+    } catch (error) {
+      console.error('Erro ao gerar relatório do cabo.', error);
+      toast('Não foi possível gerar o relatório do cabo.', 'error');
+    }
+  }
 
   function handleSort(field: SortField) {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -564,9 +680,20 @@ function EleitoresContent() {
             <option value="sem">Sem promessa</option>
           </select>
         </div>
-        <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={handleOpenNew}>
-          Novo Eleitor
-        </Button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Button
+            variant="primary"
+            size="md"
+            icon={<Printer size={16} />}
+            onClick={() => void handlePrintReport()}
+            disabled={!canPrintReport}
+          >
+            Imprimir relatório
+          </Button>
+          <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={handleOpenNew}>
+            Novo Eleitor
+          </Button>
+        </div>
       </div>
 
       {/* Tabela principal de eleitores com estados de loading/empty/lista */}
