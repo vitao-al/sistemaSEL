@@ -575,6 +575,9 @@ function EleitoresContent() {
         allItems.push(...pageResult.items);
       }
 
+      // ordenar alfabeticamente por nome antes de gerar o PDF
+      allItems.sort((a, b) => String(a.nome ?? '').localeCompare(String(b.nome ?? ''), 'pt-BR', { sensitivity: 'base' }));
+
       await printEleitoresReportPdf(allItems, reportCaboName);
       toast('Relatório em PDF gerado com sucesso.', 'success');
     } catch (error) {

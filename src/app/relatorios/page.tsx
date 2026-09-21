@@ -81,6 +81,8 @@ function buildCsvContent(report: ReportData, type: ReportType) {
         cabo.titulo,
         cabo.email,
       ]))
+    // garantir ordem alfabética por nome do cabo
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR', { sensitivity: 'base' }))
     : (() => {
         const zoneMap = new Map<string, { total: number; cabos: Array<{ nome: string; total: number }> }>();
 
@@ -105,16 +107,19 @@ function buildCsvContent(report: ReportData, type: ReportType) {
 
         const totalEleitores = report.metrics.totalEleitores || 1;
 
-        return Array.from(zoneMap.entries()).map(([zona, info]) => {
-          const topCabo = [...info.cabos].sort((a, b) => b.total - a.total)[0];
-          return [
-            zona,
-            info.total,
-            Number(((info.total / totalEleitores) * 100).toFixed(2)),
-            info.cabos.length,
-            topCabo?.nome ?? 'Sem cabo',
-          ];
-        });
+        return Array.from(zoneMap.entries())
+          .map(([zona, info]) => {
+            const topCabo = [...info.cabos].sort((a, b) => b.total - a.total)[0];
+            return [
+              zona,
+              info.total,
+              Number(((info.total / totalEleitores) * 100).toFixed(2)),
+              info.cabos.length,
+              topCabo?.nome ?? 'Sem cabo',
+            ];
+          })
+          // ordenar por nome da zona alfabeticamente
+          .sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'pt-BR', { sensitivity: 'base' }));
       })();
 
   return ['\uFEFF' + header.map(escapeCsv).join(';'), ...rows.map(row => row.map(escapeCsv).join(';'))].join('\n');
@@ -132,6 +137,8 @@ function buildExcelContent(report: ReportData, type: ReportType) {
         cabo.titulo,
         cabo.email,
       ]))
+    // garantir ordem alfabética por nome do cabo
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR', { sensitivity: 'base' }))
     : (() => {
         const zoneMap = new Map<string, { total: number; cabos: Array<{ nome: string; total: number }> }>();
 
@@ -211,8 +218,8 @@ async function buildPdf(report: ReportData, type: ReportType) {
     const zoneMap = new Map<string, number>();
     const sessionMap = new Map<string, number>();
 
-    report.admins.forEach(({ cabos }) => {
-      cabos.forEach(({ cabo, eleitores }) => {
+    report.admins.slice().sort((a, b) => String(a.admin.nome).localeCompare(String(b.admin.nome), 'pt-BR', { sensitivity: 'base' })).forEach(({ cabos }) => {
+      cabos.slice().sort((x, y) => String(x.cabo.nome).localeCompare(String(y.cabo.nome), 'pt-BR', { sensitivity: 'base' })).forEach(({ cabo, eleitores }) => {
         eleitores.forEach((eleitor) => {
           const zone = normalizeZona(eleitor.zona ?? cabo.zona);
           zoneMap.set(zone, (zoneMap.get(zone) ?? 0) + 1);
@@ -328,8 +335,8 @@ async function buildPdf(report: ReportData, type: ReportType) {
       'Criado Em',
     ];
 
-    const tableBody = report.admins.flatMap(({ admin, cabos }) =>
-      cabos.flatMap(({ cabo, eleitores }) =>
+    const tableBody = report.admins.slice().sort((a,b) => String(a.admin.nome).localeCompare(String(b.admin.nome), 'pt-BR', { sensitivity: 'base' })).flatMap(({ admin, cabos }) =>
+      cabos.slice().sort((x,y) => String(x.cabo.nome).localeCompare(String(y.cabo.nome), 'pt-BR', { sensitivity: 'base' })).flatMap(({ cabo, eleitores }) =>
         eleitores.map((e) => [
           admin.nome,
           cabo.nome,
@@ -377,8 +384,8 @@ async function buildPdf(report: ReportData, type: ReportType) {
     const fullBody: any[] = [];
     let colorIndex = 0;
 
-    for (const { admin, cabos } of report.admins) {
-      for (const { cabo, eleitores } of cabos) {
+    for (const { admin, cabos } of report.admins.slice().sort((a,b) => String(a.admin.nome).localeCompare(String(b.admin.nome), 'pt-BR', { sensitivity: 'base' }))) {
+      for (const { cabo, eleitores } of cabos.slice().sort((x,y) => String(x.cabo.nome).localeCompare(String(y.cabo.nome), 'pt-BR', { sensitivity: 'base' }))) {
         const color = caboColors[colorIndex % caboColors.length];
         colorIndex += 1;
 
@@ -591,7 +598,7 @@ function RelatoriosPage() {
       titulo: cabo.titulo,
       email: cabo.email,
       eleitores: [...eleitores].sort((a, b) => (a.nome ?? '').localeCompare(b.nome ?? '')),
-    }))).sort((a, b) => b.totalEleitores - a.totalEleitores);
+    }))).sort((a, b) => String(a.cabo).localeCompare(String(b.cabo), 'pt-BR', { sensitivity: 'base' }));
   }, [reportData]);
 
   const promiseBreakdown = useMemo(() => {
