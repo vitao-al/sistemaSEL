@@ -1,14 +1,13 @@
 // Endpoint de estatísticas do dashboard.
-// Retorna métricas agregadas sem cache para o usuário autenticado.
+// Mantém um cache curto para reduzir acessos redundantes ao banco sem expor dados muito desatualizados.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerServices } from '@/lib/database/server';
 import { buildErrorResponse } from '@/lib/errors';
 import { requireAuthenticatedScope } from '@/lib/auth/session';
 
-// Força execução dinâmica e sem cache para evitar dados stale no dashboard.
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Cache curto para reduzir a carga no banco sem tornar o dashboard completamente estático.
+export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {

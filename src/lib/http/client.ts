@@ -37,16 +37,19 @@ export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T
     throw new HttpClientError('Sem conexão com a internet.', 0, 'NETWORK_OFFLINE');
   }
 
+  const method = (init?.method ?? 'GET').toUpperCase();
+  const isReadRequest = method === 'GET' || method === 'HEAD';
+
   let response: Response;
   try {
     response = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-    credentials: 'include',
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      cache: isReadRequest ? 'force-cache' : 'no-store',
+      credentials: 'include',
     });
   } catch {
     // Falha em nível de rede/DNS/offline -> erro limpo sem vazar detalhes técnicos
