@@ -25,7 +25,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
       return (
         <div style={{ padding: 24, textAlign: 'center' }}>
           <h2>Ocorreu um erro inesperado</h2>
-          <p style={{ maxWidth: 720, margin: '8px auto' }}>{this.state.error?.message ?? 'Erro desconhecido'}</p>
+          <p style={{ maxWidth: 720, margin: '8px auto' }}>
+            {this.state.error?.message && !this.state.error.message.includes('(') && !this.state.error.message.includes('at ') && !this.state.error.message.includes('function')
+              ? this.state.error.message
+              : 'Ocorreu um erro inesperado na exibição deste conteúdo. Por favor, tente recarregar a página.'}
+          </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             <button onClick={() => window.location.reload()}>Recarregar</button>
           </div>

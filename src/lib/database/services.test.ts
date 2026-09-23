@@ -69,4 +69,28 @@ describe('UserService', () => {
     const service = new UserService(adapter);
     await expect(service.updateUserSenha('admin', '1', '000000', '654321')).rejects.toThrow('Senha atual incorreta.');
   });
+
+  it('atualiza senha com hash seguro quando a senha atual confere', async () => {
+    let updatedSenha = '';
+    const user = mockAuthUser({
+      id: '1',
+      email: 'teste@mail.com',
+      senha: '123456',
+      role: 'admin',
+      adminId: '1',
+    });
+
+    const adapter = createMockDatabaseAdapter({
+      findAuthUserById: async () => user,
+      updateAuthUser: async (_role, _id, data) => {
+        updatedSenha = data.senha;
+      },
+    });
+
+    const service = new UserService(adapter);
+    await service.updateUserSenha('admin', '1', '123456', 'novasenha123');
+
+    expect(updatedSenha).not.toBe('novasenha123');
+    expect(updatedSenha).toMatch(/^\$2[abxy]\$\d{2}\$/);
+  });
 });

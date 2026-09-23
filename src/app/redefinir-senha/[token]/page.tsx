@@ -94,7 +94,8 @@ export default function RedefinirSenhaPage() {
         if (msg.includes('expirou') || msg.includes('410')) {
           setPageState('expired');
         } else {
-          setSubmitError(msg || 'Falha ao redefinir senha. Tente novamente.');
+          const isTechnical = msg.includes('(') || msg.includes('at ') || msg.includes('function') || msg.includes('TypeError');
+          setSubmitError(!isTechnical && msg ? msg : 'Falha ao redefinir senha. Tente novamente.');
         }
       }
     },

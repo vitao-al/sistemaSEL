@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
 import { requireAuthenticatedScope } from '@/lib/auth/session';
+import { getChangePasswordRateLimitPolicy } from '@/lib/config/security-policies';
+import { enforceRateLimit } from '@/lib/http/rate-limit-guard';
 
 // Regra mínima de troca de senha.
 const senhaSchema = z.object({
@@ -19,16 +21,21 @@ type RouteParams = {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const policy = getChangePasswordRateLimitPolicy();
+    const limited = enforceRateLimit(request, {
+      scope: 'auth-user-senha',
+      max: policy.max,
+      windowMs: policy.windowMs,
+    });
+    if (limited) return limited;
+
     const scope = requireAuthenticatedScope(request);
-    const role = request.nextUrl.searchParams.get('role');
 
     if (params.id !== scope.userId) {
       throw new AppError('FORBIDDEN', 403, 'Não autorizado a alterar esta senha.');
     }
 
-    if (role !== 'admin' && role !== 'cabo') {
-      throw new AppError('VALIDATION_ERROR', 400, 'Role inválida para troca de senha.');
-    }
+    const role = scope.role;
 
     // 1) Parse e validação do payload.
     const body = await request.json();

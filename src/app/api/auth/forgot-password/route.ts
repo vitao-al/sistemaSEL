@@ -14,6 +14,14 @@ import { enforceRateLimit } from '@/lib/http/rate-limit-guard';
 const forgotSchema = z.object({ email: z.string().email('Email inválido.') });
 
 function getRequestBaseUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+
+  if (request.nextUrl?.origin) {
+    return request.nextUrl.origin;
+  }
+
   const forwardedHost = request.headers.get('x-forwarded-host');
   const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
 
@@ -21,11 +29,7 @@ function getRequestBaseUrl(request: NextRequest): string {
     return `${forwardedProto}://${forwardedHost}`;
   }
 
-  if (request.nextUrl?.origin) {
-    return request.nextUrl.origin;
-  }
-
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  return 'http://localhost:3000';
 }
 
 export async function POST(request: NextRequest) {

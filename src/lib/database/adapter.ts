@@ -17,6 +17,7 @@ import {
 } from './types';
 import { PostgresDatabaseAdapter } from './postgres-adapter';
 import { AppError } from '@/lib/errors';
+import { verifyPassword } from '@/lib/auth/password';
 
 const STORAGE_KEY_ADMINS = 'voterapp-admins';
 const STORAGE_KEY_CABOS = 'voterapp-cabos';
@@ -152,7 +153,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   }
 
   async findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null> {
-    const admin = this.readAdmins().find(item => item.email === email && item.senha === senha);
+    const admin = this.readAdmins().find(item => item.email === email && verifyPassword(senha, item.senha));
     if (admin) {
       return { ...admin, role: 'admin', adminId: admin.id };
     }
@@ -773,7 +774,7 @@ export function createDatabaseAdapter(options: AdapterOptions = {}): DatabaseAda
   if (runtime === 'server') {
     const wantsPostgres = process.env.DATABASE_PROVIDER === 'postgres';
     const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
-    const allowFallback = process.env.DATABASE_FALLBACK_TO_MEMORY === 'true';
+    const allowFallback = process.env.NODE_ENV !== 'production' && process.env.DATABASE_FALLBACK_TO_MEMORY === 'true';
 
     if (wantsPostgres && hasDatabaseUrl && allowFallback) {
       return new ResilientDatabaseAdapter(new PostgresDatabaseAdapter(), new LocalStorageDatabaseAdapter());

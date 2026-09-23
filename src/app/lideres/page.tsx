@@ -51,10 +51,15 @@ function LideresContent() {
       setLideres(result.items);
       setTotal(result.total);
     } catch (error) {
-      console.error('Erro ao carregar lideranças.', error);
+      console.error('Erro ao carregar lideranças.');
       setLideres([]);
       setTotal(0);
-      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar lideranças.');
+      const msg = error instanceof Error ? error.message : '';
+      setLoadError(
+        msg && !msg.includes('(') && !msg.includes('at ') && !msg.includes('function')
+          ? msg
+          : 'Falha ao carregar lideranças.'
+      );
     } finally {
       setLoading(false);
     }

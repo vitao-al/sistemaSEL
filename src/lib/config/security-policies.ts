@@ -36,3 +36,17 @@ export function getResetPasswordRateLimitPolicy() {
     max: parseCount(process.env.RATE_LIMIT_RESET_PASSWORD_MAX, 40),
   };
 }
+
+export function getChangePasswordRateLimitPolicy() {
+  return {
+    windowMs: parseMs(process.env.RATE_LIMIT_CHANGE_PASSWORD_WINDOW_MS, FIFTEEN_MIN),
+    max: parseCount(process.env.RATE_LIMIT_CHANGE_PASSWORD_MAX, 10),
+  };
+}
+
+export function getEleitorValidateRateLimitPolicy() {
+  return {
+    windowMs: parseMs(process.env.RATE_LIMIT_ELEITOR_VALIDATE_WINDOW_MS, 60 * 1000),
+    max: parseCount(process.env.RATE_LIMIT_ELEITOR_VALIDATE_MAX, 60),
+  };
+}

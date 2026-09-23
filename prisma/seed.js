@@ -2,22 +2,26 @@
 // Cria admin padrão, cabos eleitorais e eleitores vinculados ao cabo.
 
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const seedPassword = process.env.ADMIN_DEFAULT_PASSWORD || '123456';
+  const hashedPassword = bcrypt.hashSync(seedPassword, 10);
+
   const admin = await prisma.admin.upsert({
     where: { email: 'admin@sistemasel.com' },
     update: {
       nome: 'Administrador Geral',
-      senha: '123456',
+      senha: hashedPassword,
       cargo: 'Admin',
       avatar: 'leunamprofile.png',
     },
     create: {
       nome: 'Administrador Geral',
       email: 'admin@sistemasel.com',
-      senha: '123456',
+      senha: hashedPassword,
       cargo: 'Admin',
       avatar: 'leunamprofile.png',
     },

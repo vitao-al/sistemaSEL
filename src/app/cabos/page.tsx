@@ -58,10 +58,15 @@ function CabosContent() {
       setCabos(result.items);
       setTotal(result.total);
     } catch (error) {
-      console.error('Erro ao carregar cabos eleitorais.', error);
+      console.error('Erro ao carregar cabos eleitorais.');
       setCabos([]);
       setTotal(0);
-      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar cabos eleitorais.');
+      const msg = error instanceof Error ? error.message : '';
+      setLoadError(
+        msg && !msg.includes('(') && !msg.includes('at ') && !msg.includes('function')
+          ? msg
+          : 'Falha ao carregar cabos eleitorais.'
+      );
     } finally {
       setLoading(false);
     }
@@ -78,8 +83,8 @@ function CabosContent() {
       .then(result => {
         if (active) setLideres(result.items);
       })
-      .catch(error => {
-        console.error('Erro ao carregar lideranças.', error);
+      .catch(() => {
+        console.error('Erro ao carregar lideranças.');
         if (active) setLideres([]);
       });
 

@@ -5,7 +5,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem' }}>
       <div style={{ textAlign: 'center' }}>
         <h1 style={{ marginBottom: 12 }}>Algo deu errado</h1>
-        <p style={{ marginBottom: 20, color: '#64748b' }}>{error.message || 'Erro inesperado ao carregar a página.'}</p>
+        <p style={{ marginBottom: 20, color: '#64748b' }}>
+          {error.message && !error.message.includes('(') && !error.message.includes('at ') && !error.message.includes('function')
+            ? error.message
+            : 'Ocorreu um erro inesperado ao carregar a página. Por favor, tente novamente.'}
+        </p>
         <button
           onClick={() => reset()}
           style={{

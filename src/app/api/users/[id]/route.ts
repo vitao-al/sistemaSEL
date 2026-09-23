@@ -22,14 +22,10 @@ type RouteParams = {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const scope = requireAuthenticatedScope(request);
-    const role = request.nextUrl.searchParams.get('role');
+    const role = scope.role;
 
     if (params.id !== scope.userId) {
       throw new AppError('FORBIDDEN', 403, 'Não autorizado a atualizar este perfil.');
-    }
-
-    if (role !== 'admin' && role !== 'cabo') {
-      throw new AppError('VALIDATION_ERROR', 400, 'Role inválida para atualização de perfil.');
     }
 
     // 1) Lê e valida payload da atualização.

@@ -58,13 +58,20 @@ export function buildErrorResponse(error: unknown, fallbackMessage?: string) {
     });
   }
 
+  // Garante que o cliente nunca receba nomes de funções, código ou mensagens de erro interno
+  const isInternal = appError.status >= 500;
+  const hasFunctionOrCode = appError.message.includes('(') || appError.message.includes('at ') || appError.message.includes('function');
+  const safeMessage = (isInternal || hasFunctionOrCode)
+    ? (fallbackMessage || 'Erro interno do servidor. Tente novamente mais tarde.')
+    : appError.message;
+
   return NextResponse.json(
     {
       success: false,
       error: {
         code: appError.code,
-        message: appError.message,
-        details: appError.details ?? null,
+        message: safeMessage,
+        details: isInternal ? null : (appError.details ?? null),
       },
     },
     { status: appError.status }

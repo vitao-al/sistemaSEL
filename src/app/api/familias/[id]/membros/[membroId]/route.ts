@@ -29,6 +29,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json();
     const input = membroUpdateSchema.parse(body);
 
+    const existingMembro = await prisma.familiaMembro.findUnique({ where: { id: params.membroId } });
+    if (!existingMembro) {
+      throw new AppError('NOT_FOUND', 404, 'Vínculo não encontrado.');
+    }
+
+    if (existingMembro.familiaId !== params.id) {
+      throw new AppError('FORBIDDEN', 403, 'Vínculo não pertence a esta família.');
+    }
+
     const membro = await prisma.familiaMembro.update({
       where: { id: params.membroId },
       data: { grauParentesco: input.grauParentesco.trim() },

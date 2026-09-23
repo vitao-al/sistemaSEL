@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
+import { buildErrorResponse, AppError } from '@/lib/errors';
 
 const sampleReport = {
   generatedAt: new Date().toISOString(),
@@ -88,6 +90,19 @@ const sampleReport = {
   },
 };
 
-export function GET() {
-  return NextResponse.json({ success: true, data: sampleReport });
+export function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  try {
+    const scope = requireAuthenticatedScope(request);
+    if (scope.role !== 'admin') {
+      throw new AppError('FORBIDDEN', 403, 'Acesso restrito ao admin.');
+    }
+
+    return NextResponse.json({ success: true, data: sampleReport });
+  } catch (error) {
+    return buildErrorResponse(error, 'Não autorizado.');
+  }
 }

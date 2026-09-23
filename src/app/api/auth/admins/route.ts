@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerServices } from '@/lib/database/server';
 import { buildErrorResponse } from '@/lib/errors';
+import { requireAuthenticatedScope } from '@/lib/auth/session';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    requireAuthenticatedScope(request);
     const { caboService } = createServerServices();
     const admins = await caboService.listAdmins();
     const safeAdmins = admins.map(admin => ({

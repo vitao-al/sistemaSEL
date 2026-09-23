@@ -54,9 +54,14 @@ export default function FamiliaDetailPage({ params }: { params: { id: string } }
       const selected = familias.find(item => item.id === params.id) ?? null;
       setFamilia(selected);
     } catch (error) {
-      console.error('Erro ao carregar família.', error);
+      console.error('Erro ao carregar família.');
       setFamilia(null);
-      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar família.');
+      const msg = error instanceof Error ? error.message : '';
+      setLoadError(
+        msg && !msg.includes('(') && !msg.includes('at ') && !msg.includes('function')
+          ? msg
+          : 'Falha ao carregar família.'
+      );
     } finally {
       setLoading(false);
     }

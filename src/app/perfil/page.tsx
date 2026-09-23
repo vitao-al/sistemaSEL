@@ -67,7 +67,9 @@ function PerfilContent() {
       setProfileMsg({ type: 'success', text: 'Perfil atualizado com sucesso!' });
       toast('Perfil salvo!', 'success');
     } catch (err: any) {
-      setProfileMsg({ type: 'error', text: err.message || 'Erro ao atualizar perfil.' });
+      const msg = err?.message || '';
+      const isTechnical = msg.includes('(') || msg.includes('at ') || msg.includes('function') || msg.includes('TypeError');
+      setProfileMsg({ type: 'error', text: !isTechnical && msg ? msg : 'Erro ao atualizar perfil.' });
     } finally {
       setProfileLoading(false);
     }
@@ -84,7 +86,9 @@ function PerfilContent() {
       senhaForm.reset();
       toast('Senha alterada!', 'success');
     } catch (err: any) {
-      setSenhaMsg({ type: 'error', text: err.message || 'Erro ao alterar senha.' });
+      const msg = err?.message || '';
+      const isTechnical = msg.includes('(') || msg.includes('at ') || msg.includes('function') || msg.includes('TypeError');
+      setSenhaMsg({ type: 'error', text: !isTechnical && msg ? msg : 'Erro ao alterar senha.' });
     } finally {
       setSenhaLoading(false);
     }

@@ -544,10 +544,10 @@ function RelatoriosPage() {
       const data = await getCabosReport();
       setReportData(data);
       setLoadError(null);
-    } catch (error) {
-      console.error('Erro ao carregar relatórios.', error);
+    } catch {
+      console.error('Erro ao carregar relatórios.');
       setReportData(null);
-      setLoadError(error instanceof Error ? error.message : 'Não foi possível carregar os relatórios do sistema.');
+      setLoadError('Não foi possível carregar os relatórios do sistema. Tente novamente mais tarde.');
       toast('Não foi possível carregar os relatórios do sistema.', 'error');
     } finally {
       setLoading(false);
@@ -687,12 +687,9 @@ function RelatoriosPage() {
 
       toast('Relatório exportado com sucesso.', 'success');
       setSelectedReport(null);
-    } catch (error) {
-      console.error('Erro ao exportar relatório.', error);
-      const msg = error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
-      setDebugError(msg);
-      setShowDebugError(true);
-      toast('Não foi possível exportar o relatório selecionado. Abra o modal de erro para mais detalhes.', 'error');
+    } catch {
+      console.error('Erro ao exportar relatório.');
+      toast('Não foi possível exportar o relatório selecionado. Tente novamente.', 'error');
     } finally {
       setReportLoading(false);
     }
@@ -703,17 +700,14 @@ function RelatoriosPage() {
     try {
       const res = await fetch('/api/cabos/report/debug-sample');
       const payload = await res.json();
-      if (!payload?.success) throw new Error(payload?.error?.message ?? 'Erro ao obter sample');
+      if (!payload?.success) throw new Error('Erro ao obter dados de teste.');
       const reportSample = payload.data as ReportData;
       const pdfBuffer = await buildPdf(reportSample, 'geral');
       downloadFile(pdfBuffer, 'relatorio-geral-debug.pdf', 'application/pdf');
       toast('Relatório debug exportado com sucesso.', 'success');
-    } catch (error) {
-      console.error('Erro ao exportar relatório debug.', error);
-      const msg = error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
-      setDebugError(msg);
-      setShowDebugError(true);
-      toast('Não foi possível exportar o relatório de debug. Abra o modal de erro para mais detalhes.', 'error');
+    } catch {
+      console.error('Erro ao exportar relatório debug.');
+      toast('Não foi possível exportar o relatório de teste. Tente novamente.', 'error');
     } finally {
       setReportLoading(false);
     }

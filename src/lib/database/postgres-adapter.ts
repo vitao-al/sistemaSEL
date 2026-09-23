@@ -2,6 +2,7 @@
 
 import { prisma } from './prisma';
 import { AppError } from '@/lib/errors';
+import { hashPassword, isPasswordHashed, verifyPassword } from '@/lib/auth/password';
 import { Admin, CaboEleitoral, Eleitor } from '@/types';
 import {
   AuthUserWithPassword,
@@ -180,14 +181,26 @@ export class PostgresDatabaseAdapter implements DatabaseAdapter {
 
   async findAuthUserByCredentials(email: string, senha: string): Promise<AuthUserWithPassword | null> {
     try {
-      const admin = await prisma.admin.findFirst({ where: { email, senha } });
-      if (!admin) return null;
+      const admin = await prisma.admin.findUnique({ where: { email } });
+      if (!admin || !admin.senha) return null;
+
+      const isValid = verifyPassword(senha, admin.senha);
+      if (!isValid) return null;
+
+      // Migração transparente de senhas legadas em texto puro para hash bcrypt
+      if (!isPasswordHashed(admin.senha)) {
+        const hashedPassword = hashPassword(senha);
+        await prisma.admin.update({
+          where: { id: admin.id },
+          data: { senha: hashedPassword },
+        }).catch(() => {});
+      }
 
       return {
         id: admin.id,
         nome: admin.nome,
         email: admin.email,
-        senha: admin.senha ?? '',
+        senha: admin.senha,
         avatar: admin.avatar ?? undefined,
         cargo: admin.cargo ?? 'Admin',
         role: 'admin',

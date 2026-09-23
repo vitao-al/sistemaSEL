@@ -1,6 +1,7 @@
 import { Admin, AuthRole, AuthUser, CaboEleitoral, DashboardStats, Eleitor } from '@/types';
 import { AppError } from '@/lib/errors';
 import { signAuthToken } from '@/lib/auth/jwt';
+import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import {
   CaboQueryParams,
   CreateCaboInput,
@@ -45,16 +46,8 @@ export class AuthService {
       throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
     }
 
-    if (foundUser.role === 'cabo' && !foundUser.adminId) {
+    if (foundUser.role !== 'admin' || !foundUser.adminId) {
       throw new AppError('UNAUTHORIZED', 401, 'Email ou senha inválidos.');
-    }
-
-    if (foundUser.role === 'admin' && !foundUser.adminId) {
-      throw new AppError('INTERNAL_ERROR', 500, 'Sessão inválida para admin.');
-    }
-
-    if (foundUser.role === 'cabo' && !foundUser.adminId) {
-      throw new AppError('INTERNAL_ERROR', 500, 'Sessão inválida para cabo eleitoral.');
     }
 
     return {
@@ -125,7 +118,7 @@ export class AuthService {
       throw new AppError('NOT_FOUND', 404, 'Usuário não encontrado.');
     }
 
-    await this.adapter.updateAuthUser(role as 'admin' | 'cabo', foundUser.id, { senha: novaSenha });
+    await this.adapter.updateAuthUser(role as 'admin' | 'cabo', foundUser.id, { senha: hashPassword(novaSenha) });
     await this.adapter.markPasswordResetTokenUsed(token);
   }
 }
@@ -336,7 +329,7 @@ export class EleitorService {
     return {
       cpfAvailable: !conflicts.some(conflict => conflict.field === 'cpf'),
       tituloEleitorAvailable: !conflicts.some(conflict => conflict.field === 'tituloEleitor'),
-      conflicts,
+      conflicts: conflicts.map(conflict => ({ id: '', field: conflict.field, value: '' })),
     };
   }
 
@@ -451,10 +444,10 @@ export class UserService {
       throw new AppError('NOT_FOUND', 404, 'Usuário não encontrado.');
     }
 
-    if (user.senha !== senhaAtual) {
+    if (!verifyPassword(senhaAtual, user.senha)) {
       throw new AppError('UNAUTHORIZED', 401, 'Senha atual incorreta.');
     }
 
-    await this.adapter.updateAuthUser(role, id, { senha: novaSenha });
+    await this.adapter.updateAuthUser(role, id, { senha: hashPassword(novaSenha) });
   }
 }

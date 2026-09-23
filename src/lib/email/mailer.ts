@@ -25,7 +25,19 @@ function buildTransporter() {
   });
 }
 
+function escapeHtml(str: string): string {
+  return str.replace(/[&<>'"]/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  }[char] || char));
+}
+
 function buildResetEmailHtml(nome: string, resetUrl: string): string {
+  const safeNome = escapeHtml(nome);
+  const safeResetUrl = encodeURI(resetUrl);
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -70,7 +82,7 @@ function buildResetEmailHtml(nome: string, resetUrl: string): string {
     </div>
 
     <div class="body">
-      <div class="greeting">Olá, ${nome}! 👋</div>
+      <div class="greeting">Olá, ${safeNome}! 👋</div>
 
       <p class="text">
         Recebemos uma solicitação para redefinir a senha da sua conta no <strong style="color:#F8FAFC">Sistema SEL</strong>.
@@ -78,7 +90,7 @@ function buildResetEmailHtml(nome: string, resetUrl: string): string {
       </p>
 
       <div class="btn-wrap">
-        <a href="${resetUrl}" class="btn">🔑 Redefinir minha senha</a>
+        <a href="${safeResetUrl}" class="btn">🔑 Redefinir minha senha</a>
       </div>
 
       <div class="expiry-box">
@@ -98,7 +110,7 @@ function buildResetEmailHtml(nome: string, resetUrl: string): string {
 
       <p class="url-fallback">
         Se o botão não funcionar, copie e cole o link abaixo no seu navegador:<br />
-        <a href="${resetUrl}">${resetUrl}</a>
+        <a href="${safeResetUrl}">${safeResetUrl}</a>
       </p>
     </div>
 

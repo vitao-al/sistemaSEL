@@ -33,3 +33,6 @@ pnpm-debug.log*
 .DS_Store
 node_modules
 .agents
+
+#skills
+./skills

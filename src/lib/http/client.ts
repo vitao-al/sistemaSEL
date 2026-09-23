@@ -48,10 +48,9 @@ export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T
     cache: 'no-store',
     credentials: 'include',
     });
-  } catch (err) {
-    // Network-level failure (DNS, CORS, offline race) -> wrap in HttpClientError
-    const message = err instanceof Error ? err.message : String(err);
-    throw new HttpClientError(message || 'Erro de comunicação com o servidor.', 0, 'NETWORK_ERROR', err instanceof Error ? { stack: err.stack } : undefined);
+  } catch {
+    // Falha em nível de rede/DNS/offline -> erro limpo sem vazar detalhes técnicos
+    throw new HttpClientError('Erro de comunicação com o servidor. Verifique sua conexão.', 0, 'NETWORK_ERROR');
   }
 
   let payload: ApiEnvelope<T> | null = null;
@@ -68,8 +67,11 @@ export async function httpRequest<T>(url: string, init?: RequestInit): Promise<T
 
   // Regras de falha: status HTTP inválido ou envelope de negócio com success=false.
   if (!response.ok || !payload?.success) {
-    const message = payload?.error?.message ?? 'Erro inesperado de comunicação.';
-    throw new HttpClientError(message, response.status, payload?.error?.code, payload?.error?.details);
+    let message = payload?.error?.message ?? 'Erro inesperado de comunicação.';
+    if (message.includes('(') || message.includes('at ') || message.includes('function') || message.includes('TypeError')) {
+      message = 'Ocorreu um erro no processamento. Tente novamente.';
+    }
+    throw new HttpClientError(message, response.status, payload?.error?.code);
   }
 
   // Em caso de sucesso, devolve apenas o conteúdo de data.

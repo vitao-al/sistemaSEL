@@ -49,7 +49,9 @@ export default function LoginPage() {
       const role = state.user?.role;
       router.push(role === 'admin' ? '/lideres' : '/dashboard');
     } catch (err: any) {
-      setGlobalError(err.message || 'Erro ao fazer login.');
+      const msg = err?.message || '';
+      const isTechnical = msg.includes('(') || msg.includes('at ') || msg.includes('function') || msg.includes('TypeError');
+      setGlobalError(!isTechnical && msg ? msg : 'Erro ao fazer login. Verifique suas credenciais.');
     }
   };
 

@@ -87,8 +87,8 @@ function FamiliasContent() {
     try {
       const result = await getEleitores({ page: 1, perPage: 100, sortField: 'nome', sortDir: 'asc' });
       setEleitores(result.items);
-    } catch (error) {
-      console.error('Erro ao carregar eleitores para a tela de famílias.', error);
+    } catch {
+      console.error('Erro ao carregar eleitores para a tela de famílias.');
       setEleitores([]);
       setDataError('Não foi possível carregar os eleitores para cadastro em massa. Você pode continuar usando as buscas do modal.');
     } finally {
@@ -115,12 +115,12 @@ function FamiliasContent() {
       if (cabosResult.status === 'fulfilled') {
         setCabos(cabosResult.value.items);
       } else {
-        console.error('Erro ao carregar cabos na listagem de famílias.', cabosResult.reason);
+        console.error('Erro ao carregar cabos na listagem de famílias.');
         setCabos([]);
         setDataError('Famílias carregadas, mas não foi possível atualizar a lista de cabos responsáveis.');
       }
-    } catch (error) {
-      console.error('Erro ao carregar a listagem de famílias.', error);
+    } catch {
+      console.error('Erro ao carregar a listagem de famílias.');
       setFamilias([]);
       setCabos([]);
       setDataError('Não foi possível carregar a lista de famílias. Tente novamente mais tarde.');
@@ -330,8 +330,8 @@ function FamiliasContent() {
       resetForm();
       await loadData();
       toast(editItem ? 'Família atualizada.' : 'Família cadastrada.', 'success');
-    } catch (error) {
-      console.error('Erro ao salvar família.', error);
+    } catch {
+      console.error('Erro ao salvar família.');
       toast('Falha ao salvar a família. Verifique os dados e tente novamente.', 'error');
     } finally {
       setSaving(false);

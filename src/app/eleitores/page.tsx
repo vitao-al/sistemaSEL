@@ -94,7 +94,13 @@ function getInitials(name?: string) {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+  if (error instanceof Error && error.message) {
+    const msg = error.message;
+    if (!msg.includes('(') && !msg.includes('at ') && !msg.includes('function') && !msg.includes('TypeError')) {
+      return msg;
+    }
+  }
+  return fallback;
 }
 
 function slugify(value: string) {
@@ -114,6 +120,20 @@ async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
 
   const doc = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const pageFooter = () => {
+    const totalPages = doc.getNumberOfPages();
+    const footerY = pageHeight - 6;
+
+    doc.setDrawColor(203, 213, 225);
+    doc.line(8, footerY - 2, pageWidth - 8, footerY - 2);
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Cabo: ${caboNome}`, 10, footerY);
+    doc.text(`Página ${doc.getCurrentPageInfo().pageNumber} de ${totalPages}`, pageWidth - 28, footerY, { align: 'right' });
+  };
 
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageWidth, 22, 'F');
@@ -155,7 +175,7 @@ async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
       fillColor: [241, 245, 249],
     },
     theme: 'striped',
-    margin: { left: 8, right: 8 },
+    margin: { left: 8, right: 8, bottom: 14 },
     tableWidth: 'wrap',
     columnStyles: {
       0: { cellWidth: 42 },
@@ -165,6 +185,9 @@ async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
       4: { cellWidth: 16 },
       5: { cellWidth: 40 },
       6: { cellWidth: 28 },
+    },
+    didDrawPage: () => {
+      pageFooter();
     },
   });
 
@@ -510,7 +533,7 @@ function EleitoresContent() {
       setEleitores(data.items);
       setTotalEleitores(data.total);
     } catch (error) {
-      console.error('Erro ao carregar eleitores.', error);
+      console.error('Erro ao carregar eleitores.');
       setEleitores([]);
       setTotalEleitores(0);
       setLoadError(getErrorMessage(error, 'Falha ao carregar eleitores.'));
@@ -580,8 +603,8 @@ function EleitoresContent() {
 
       await printEleitoresReportPdf(allItems, reportCaboName);
       toast('Relatório em PDF gerado com sucesso.', 'success');
-    } catch (error) {
-      console.error('Erro ao gerar relatório do cabo.', error);
+    } catch {
+      console.error('Erro ao gerar relatório do cabo.');
       toast('Não foi possível gerar o relatório do cabo.', 'error');
     }
   }

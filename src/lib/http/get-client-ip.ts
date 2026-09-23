@@ -6,14 +6,20 @@ import type { NextRequest } from 'next/server';
  * para este app, a primeira entrada é o padrão comum atrás de proxy.
  */
 export function getClientIp(request: NextRequest): string {
+  const vercelIp = request.headers.get('x-vercel-ip');
+  if (vercelIp?.trim()) return vercelIp.trim();
+
+  const cfIp = request.headers.get('cf-connecting-ip');
+  if (cfIp?.trim()) return cfIp.trim();
+
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp?.trim()) return realIp.trim();
+
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
     if (first) return first;
   }
-
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp?.trim()) return realIp.trim();
 
   // NextRequest pode expor ip em ambientes específicos
   const fromRequest = (request as NextRequest & { ip?: string | null }).ip;

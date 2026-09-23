@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createServerServices } from '@/lib/database/server';
 import { AppError, buildErrorResponse } from '@/lib/errors';
 import { requireAuthenticatedScope } from '@/lib/auth/session';
+import { getEleitorValidateRateLimitPolicy } from '@/lib/config/security-policies';
+import { enforceRateLimit } from '@/lib/http/rate-limit-guard';
 
 const eleitorValidateSchema = z.object({
   cpf: z.string().optional(),
@@ -12,6 +14,14 @@ const eleitorValidateSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const policy = getEleitorValidateRateLimitPolicy();
+    const limited = enforceRateLimit(request, {
+      scope: 'eleitores-validate',
+      max: policy.max,
+      windowMs: policy.windowMs,
+    });
+    if (limited) return limited;
+
     requireAuthenticatedScope(request);
 
     const { searchParams } = new URL(request.url);
