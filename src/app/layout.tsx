@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   description: 'Sistema de gestão de eleitores para campanhas políticas',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">

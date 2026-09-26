@@ -357,3 +357,98 @@
     font-size: 10px;
   }
 }
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: min(230px, 72vw);
+    max-width: 100vw;
+    overflow: hidden;
+  }
+  .sidebarTop {
+    padding: 12px 12px 8px;
+  }
+  .brandIcon {
+    width: 28px;
+    height: 28px;
+  }
+  .brandName {
+    font-size: 13px;
+  }
+  .nav {
+    padding: 8px 6px 10px;
+  }
+  .navSection {
+    margin-top: 12px;
+    padding: 0 6px;
+    font-size: 9px;
+  }
+  .navItem {
+    gap: 8px;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+  .navIcon {
+    width: 16px;
+  }
+  .sidebarBottom {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 10px 10px;
+  }
+  .userCard {
+    width: 100%;
+    min-width: 0;
+    padding: 8px 8px;
+    gap: 8px;
+  }
+  .userInfo {
+    min-width: 0;
+  }
+  .userName {
+    font-size: 11px;
+  }
+  .userRole {
+    font-size: 9px;
+  }
+  .logoutBtn {
+    align-self: flex-start;
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+    margin-left: 8px;
+  }
+}
+
+@media (max-width: 390px) {
+  .sidebar {
+    width: min(220px, 70vw);
+  }
+  .brandName {
+    font-size: 12px;
+  }
+  .navItem {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .sidebarBottom {
+    gap: 5px;
+    padding: 7px 8px 9px;
+  }
+  .userCard {
+    gap: 6px;
+    padding: 7px 7px;
+  }
+  .userName {
+    font-size: 10px;
+  }
+  .userRole {
+    font-size: 8px;
+  }
+  .logoutBtn {
+    width: 26px;
+    height: 26px;
+    margin-left: 6px;
+  }
+}
