@@ -14,6 +14,7 @@ import { useLiveQuery } from '@/lib/sync/use-live-query';
 import { useAuthStore } from '@/store/auth';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { calculatePercentShare, getTrendDirection } from '@/lib/dashboard-metrics';
 import s from './dashboard.module.css';
 
 const COLORS = ['#F97316', '#FB923C', '#94A3B8'];
@@ -83,6 +84,8 @@ export default function DashboardPage() {
   }
 
   const totalComPromessa = stats.promessasConcluidas + stats.promessasPendentes;
+  const promessasConcluidasPercent = calculatePercentShare(stats.promessasConcluidas, totalComPromessa);
+  const promessasPendentesPercent = calculatePercentShare(stats.promessasPendentes, totalComPromessa);
 
   return (
     <Layout title="Dashboard" breadcrumb="Visão geral da campanha">
@@ -96,7 +99,7 @@ export default function DashboardPage() {
             iconBg="rgba(249,115,22,0.1)"
             iconColor="var(--brand-primary)"
             badge={stats.totalEleitoresVariacao}
-            badgeUp
+            badgeUp={getTrendDirection(stats.totalEleitoresVariacao)}
             description="vs mês passado"
             onClick={() => router.push('/eleitores')}
             delay={0}
@@ -107,8 +110,8 @@ export default function DashboardPage() {
             icon={<CheckCircle2 size={20} />}
             iconBg="rgba(16,185,129,0.1)"
             iconColor="var(--success)"
-            badge={stats.promessasConcluidasVariacao}
-            badgeUp
+            badge={promessasConcluidasPercent}
+            badgeUp={promessasConcluidasPercent >= 50}
             description={`de ${totalComPromessa} com promessa`}
             onClick={() => router.push('/eleitores?promessa=concluida')}
             delay={80}
@@ -119,7 +122,9 @@ export default function DashboardPage() {
             icon={<Clock size={20} />}
             iconBg="rgba(245,158,11,0.1)"
             iconColor="var(--warning)"
-            description={`${totalComPromessa > 0 ? Math.round((stats.promessasPendentes / totalComPromessa) * 100) : 0}% do total de promessas`}
+            badge={promessasPendentesPercent}
+            badgeUp={promessasPendentesPercent <= 50}
+            description={`do total de promessas`}
             onClick={() => router.push('/eleitores?promessa=pendente')}
             delay={160}
           />

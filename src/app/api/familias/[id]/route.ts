@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuthenticatedScope } from '@/lib/auth/session';
 import { prisma } from '@/lib/database/prisma';
 import { AppError, buildErrorResponse } from '@/lib/errors';
+import { deleteFamiliaWithMembers } from '@/lib/familias';
 
 const familiaUpdateSchema = z.object({
   nome: z.string().optional(),
@@ -113,9 +114,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const scope = requireAuthenticatedScope(request);
-    await getFamiliaByScope(scope, params.id);
+    const existing = await prisma.familia.findFirst({
+      where: scope.role === 'admin'
+        ? { id: params.id, caboEleitoral: { adminId: scope.adminId } }
+        : { id: params.id, caboEleitoralId: scope.caboId },
+      select: { id: true },
+    });
 
-    await prisma.familia.delete({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ success: true, data: null }, { status: 200 });
+    }
+
+    await deleteFamiliaWithMembers(prisma, params.id);
     return NextResponse.json({ success: true, data: null }, { status: 200 });
   } catch (error) {
     return buildErrorResponse(error, 'Falha ao remover família.');

@@ -51,7 +51,6 @@ function LideresContent() {
       setLideres(result.items);
       setTotal(result.total);
     } catch (error) {
-      console.error('Erro ao carregar lideranças.');
       setLideres([]);
       setTotal(0);
       const msg = error instanceof Error ? error.message : '';

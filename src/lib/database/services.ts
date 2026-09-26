@@ -1,5 +1,6 @@
 import { Admin, AuthRole, AuthUser, CaboEleitoral, DashboardStats, Eleitor } from '@/types';
 import { AppError } from '@/lib/errors';
+import { calculatePercentVariation } from '@/lib/dashboard-metrics';
 import { signAuthToken } from '@/lib/auth/jwt';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import {
@@ -354,12 +355,7 @@ export class DashboardService {
   constructor(private readonly eleitorService: EleitorService) {}
 
   private calculateVariation(current: number, previous: number): number {
-    if (previous === 0) {
-      return current === 0 ? 0 : 100;
-    }
-
-    const variation = ((current - previous) / previous) * 100;
-    return Number(variation.toFixed(1));
+    return calculatePercentVariation(current, previous);
   }
 
   async getDashboardStats(scope: SessionScope): Promise<DashboardStats> {

@@ -19,6 +19,7 @@ import { useRefetchOnSyncInvalidate } from '@/lib/sync/use-refetch-on-sync';
 import { CaboEleitoral, Eleitor } from '@/types';
 import { useAuthStore } from '@/store/auth';
 import RetryNotice from '@/components/ui/RetryNotice';
+import { getPageLabel } from '@/lib/dashboard-metrics';
 import s from './eleitores.module.css';
 
 // Schema flexível: campos são opcionais porque o cadastro pode ser progressivo.
@@ -122,17 +123,18 @@ async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const pageFooter = () => {
+  const pageFooter = (pageNumber: number) => {
     const totalPages = doc.getNumberOfPages();
     const footerY = pageHeight - 6;
 
+    doc.setPage(pageNumber);
     doc.setDrawColor(203, 213, 225);
     doc.line(8, footerY - 2, pageWidth - 8, footerY - 2);
     doc.setTextColor(71, 85, 105);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.text(`Cabo: ${caboNome}`, 10, footerY);
-    doc.text(`Página ${doc.getCurrentPageInfo().pageNumber} de ${totalPages}`, pageWidth - 28, footerY, { align: 'right' });
+    doc.text(`Página ${getPageLabel(pageNumber, totalPages)}`, pageWidth - 28, footerY, { align: 'right' });
   };
 
   doc.setFillColor(15, 23, 42);
@@ -186,10 +188,15 @@ async function printEleitoresReportPdf(eleitores: Eleitor[], caboNome: string) {
       5: { cellWidth: 40 },
       6: { cellWidth: 28 },
     },
-    didDrawPage: () => {
-      pageFooter();
+    didDrawPage: ({ pageNumber }) => {
+      pageFooter(pageNumber);
     },
   });
+
+  const totalPages = doc.getNumberOfPages();
+  for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+    pageFooter(pageNumber);
+  }
 
   doc.save(`eleitores-${slugify(caboNome)}.pdf`);
 }

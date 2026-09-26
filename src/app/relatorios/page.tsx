@@ -695,24 +695,6 @@ function RelatoriosPage() {
     }
   };
 
-  const exportDebugPdf = async () => {
-    setReportLoading(true);
-    try {
-      const res = await fetch('/api/cabos/report/debug-sample');
-      const payload = await res.json();
-      if (!payload?.success) throw new Error('Erro ao obter dados de teste.');
-      const reportSample = payload.data as ReportData;
-      const pdfBuffer = await buildPdf(reportSample, 'geral');
-      downloadFile(pdfBuffer, 'relatorio-geral-debug.pdf', 'application/pdf');
-      toast('Relatório debug exportado com sucesso.', 'success');
-    } catch {
-      console.error('Erro ao exportar relatório debug.');
-      toast('Não foi possível exportar o relatório de teste. Tente novamente.', 'error');
-    } finally {
-      setReportLoading(false);
-    }
-  };
-
   return (
     <Layout title="Relatórios" breadcrumb="Resumo executivo e indicadores por zona">
       <div className={s.page}>
@@ -896,7 +878,6 @@ function RelatoriosPage() {
 
               <div className={s.exportGrid}>
                 <Button variant="primary" loading={reportLoading} onClick={() => void exportReport('pdf')}>Baixar PDF</Button>
-                <Button variant="ghost" loading={reportLoading} onClick={() => void exportDebugPdf()}>Baixar PDF (debug)</Button>
                 <Button variant="secondary" loading={reportLoading} onClick={() => void exportReport('excel')}>Baixar Excel</Button>
                 <Button variant="secondary" loading={reportLoading} onClick={() => void exportReport('csv')}>Baixar CSV</Button>
               </div>

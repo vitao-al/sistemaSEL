@@ -53,3 +53,10 @@ export function filterEleitoresPorTermo<T extends {
     })
   );
 }
+
+export async function deleteFamiliaWithMembers(prismaClient: any, familiaId: string): Promise<void> {
+  await prismaClient.$transaction(async (tx: any) => {
+    await tx.familiaMembro.deleteMany({ where: { familiaId } });
+    await tx.familia.delete({ where: { id: familiaId } });
+  });
+}

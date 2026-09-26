@@ -15,6 +15,7 @@ import {
   updateFamilia,
 } from '@/lib/data';
 import RetryNotice from '@/components/ui/RetryNotice';
+import { HttpClientError } from '@/lib/http/client';
 import { sortFamiliasPorNome } from '@/lib/familias';
 import { useAuthStore } from '@/store/auth';
 import type { CaboEleitoral, Eleitor, Familia } from '@/types';
@@ -346,7 +347,14 @@ function FamiliasContent() {
       setDeleteItem(null);
       await loadData();
       toast('Família removida.', 'info');
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpClientError && error.status === 404) {
+        setDeleteItem(null);
+        await loadData();
+        toast('Família já foi removida.', 'info');
+        return;
+      }
+
       toast('Falha ao remover família.', 'error');
     }
   };

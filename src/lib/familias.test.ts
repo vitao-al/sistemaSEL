@@ -42,3 +42,28 @@ describe('filterEleitoresPorTermo', () => {
     expect(filterEleitoresPorTermo(eleitores, '30').map(item => item.id)).toEqual(['e3']);
   });
 });
+
+describe('deleteFamiliaWithMembers', () => {
+  it('remove primeiro os vínculos e depois a família', async () => {
+    const calls: string[] = [];
+    const prismaMock = {
+      $transaction: async (callback: (tx: any) => Promise<void>) => callback({
+        familiaMembro: {
+          deleteMany: async ({ where }: { where: { familiaId: string } }) => {
+            calls.push(`deleteMany:${where.familiaId}`);
+          },
+        },
+        familia: {
+          delete: async ({ where }: { where: { id: string } }) => {
+            calls.push(`delete:${where.id}`);
+          },
+        },
+      }),
+    };
+
+    await import('./familias').then(async ({ deleteFamiliaWithMembers }) => {
+      await deleteFamiliaWithMembers(prismaMock as any, 'fam-123');
+      expect(calls).toEqual(['deleteMany:fam-123', 'delete:fam-123']);
+    });
+  });
+});

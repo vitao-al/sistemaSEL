@@ -309,7 +309,7 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
     const search = (params.search || '').toLowerCase();
     const all = this.readCabos()
       .filter(item => item.adminId === adminId)
-      .filter(item => params.liderId ? item.liderId === params.liderId : item.liderId == null)
+      .filter(item => params.liderId === undefined || params.liderId === null ? true : item.liderId === params.liderId)
       .filter(item => !search || [item.nome, item.titulo, item.zona, item.email].join(' ').toLowerCase().includes(search))
       .map(item => item)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -535,6 +535,15 @@ export class LocalStorageDatabaseAdapter implements DatabaseAdapter {
   async markPasswordResetTokenUsed(): Promise<void> {}
 
   async deleteExpiredPasswordResetTokens(): Promise<void> {}
+}
+
+export function shouldEnableDatabaseFallback(env: NodeJS.ProcessEnv = process.env): boolean {
+  const override = env.DATABASE_FALLBACK_TO_MEMORY;
+  if (override !== undefined) {
+    return override === 'true';
+  }
+
+  return env.NODE_ENV !== 'production';
 }
 
 function isRecoverableDatabaseError(error: unknown): boolean {
@@ -774,7 +783,7 @@ export function createDatabaseAdapter(options: AdapterOptions = {}): DatabaseAda
   if (runtime === 'server') {
     const wantsPostgres = process.env.DATABASE_PROVIDER === 'postgres';
     const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
-    const allowFallback = process.env.NODE_ENV !== 'production' && process.env.DATABASE_FALLBACK_TO_MEMORY === 'true';
+    const allowFallback = shouldEnableDatabaseFallback(process.env);
 
     if (wantsPostgres && hasDatabaseUrl && allowFallback) {
       return new ResilientDatabaseAdapter(new PostgresDatabaseAdapter(), new LocalStorageDatabaseAdapter());
